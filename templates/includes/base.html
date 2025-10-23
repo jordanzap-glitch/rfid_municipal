@@ -1,0 +1,28 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+{% include "includes/header.html" %}
+
+<body>
+  <div id="app">
+    <div class="main-wrapper main-wrapper-1">
+      <!-- cut-->
+      <div class="navbar-bg"></div>
+      {% include "includes/topbar.html" %}
+      <!-- cut-->
+      {% include "includes/sidebar.html" %}
+      <!--cut-->
+      <!-- Main Content -->
+      <div class="main-content">
+        {% block content %}
+          <!-- Default content can go here -->
+        {% endblock %}
+      </div>
+      {% include "includes/footer.html" %}
+    </div>
+  </div>
+
+  <!-- General JS Scripts -->
+  {% include "includes/scripts.html" %}
+</body>
+</html>
