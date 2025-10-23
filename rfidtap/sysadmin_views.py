@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
-from app.models import CustomUser
+from app.models import CustomUser, Registration, RifdAuth
 
 
 

@@ -37,7 +37,7 @@ class Province(models.Model):
 
 class Municipality(models.Model):
     municipality_name = models.CharField(max_length=100)
-    province_id = models.ForeignKey(Province, on_delete=models.CASCADE)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE)
     
     def __str__(self):
         return self.municipality_name
@@ -45,7 +45,7 @@ class Municipality(models.Model):
     
 class Barangay(models.Model):
     barangay_name = models.CharField(max_length=100)
-    municipality_id = models.ForeignKey(Municipality, on_delete=models.CASCADE)
+    municipality = models.ForeignKey(Municipality, on_delete=models.CASCADE)
     
     def __str__(self):
         return self.barangay_name
@@ -62,9 +62,9 @@ class Registration(models.Model):
     date_of_birth = models.DateField()
     place_of_birth = models.CharField(max_length=255)
 
-    province_id = models.ForeignKey(Province, on_delete=models.CASCADE) 
-    municipality_id = models.ForeignKey(Municipality, on_delete=models.CASCADE)
-    barangay_id = models.ForeignKey(Barangay, on_delete=models.CASCADE)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE) 
+    municipality = models.ForeignKey(Municipality, on_delete=models.CASCADE)
+    barangay = models.ForeignKey(Barangay, on_delete=models.CASCADE)
 
     mobile_no = models.CharField(max_length=20)
 
