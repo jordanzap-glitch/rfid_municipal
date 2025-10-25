@@ -11,4 +11,7 @@ class UserModel(UserAdmin):
 
 admin.site.register(CustomUser, UserModel)
 admin.site.register(Registration)
-admin.site.register(RifdAuth)
+admin.site.register(RfidAuth)
+admin.site.register(Province)
+admin.site.register(Municipality)
+admin.site.register(Barangay)

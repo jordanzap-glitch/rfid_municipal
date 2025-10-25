@@ -1,0 +1,143 @@
+{% extends "includes/base.html" %}
+{% load static %}
+{% block content %} 
+
+<section class="section">
+    <div class="section-header">
+        <h1>Registration</h1>
+    </div>
+
+    <div class="section-body">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8 mx-auto">
+                <form method="post" enctype="multipart/form-data" class="card" action="{% url 'sysadmin_register' %}">
+                    {% csrf_token %}
+
+                    
+
+
+                    <div class="card-header">
+                        <h4>Create new registration</h4>
+                    </div>
+
+                    {% include "includes/message.html" %}
+        
+                    <div class="card-body">
+
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="profile-upload mr-3 text-center">
+                                <div id="profilePreview" class="profile-box">
+                                    <span style="font-size:12px;">No image<br>selected</span>
+                                </div>
+                                <div class="mt-2">
+                                    <label for="profile" class="btn btn-sm btn-outline-primary profile-upload-label">Upload</label>
+                                </div>
+                                <input type="file" name="profile" id="profile" accept="image/*" style="display:none;" />
+                            </div>
+                            <div class="flex-fill">
+                                <p class="text-muted mb-0">Upload a square profile image (recommended 300×300). Click "Upload" to choose a file.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="rfid">RFID (required)</label>
+                                <input type="text" name="rfid" id="rfid" class="form-control" maxlength="50" />
+                            </div>
+
+                            <div class="form-group col-md-6">
+                                <label for="mobile_no">Mobile Number</label>
+                                <input type="tel" name="mobile_no" id="mobile_no" class="form-control" maxlength="20" required />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="last_name">Last name</label>
+                                <input type="text" name="last_name" id="last_name" class="form-control" required />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="first_name">First name</label>
+                                <input type="text" name="first_name" id="first_name" class="form-control" required />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="middle_name">Middle name</label>
+                                <input type="text" name="middle_name" id="middle_name" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="name_extension">Name extension</label>
+                                <input type="text" name="name_extension" id="name_extension" class="form-control" maxlength="10" />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="date_of_birth">Date of birth</label>
+                                <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" required />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="place_of_birth">Place of birth</label>
+                                <input type="text" name="place_of_birth" id="place_of_birth" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="province">Province</label>
+                                <select name="province" id="province" class="form-control" required>
+                                    <option value="">-- select province --</option>
+                                    {% for p in provinces %}
+                                        <option value="{{ p.id }}" {% if p.id == 1 %}selected{% endif %}>{{ p.province_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group col-md-4">
+                                <label for="municipality">Municipality</label>
+                                <select name="municipality" id="municipality" class="form-control" required>
+                                    <option value="">-- select municipality --</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group col-md-4">
+                                <label for="barangay">Barangay</label>
+                                <select name="barangay" id="barangay" class="form-control" required>
+                                    <option value="">-- select barangay --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- file input removed from bottom, upload control is above -->
+                    </div>
+
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn-outline-primary">Save registration</button >
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+// Preview selected profile image in the circular preview
+document.addEventListener('DOMContentLoaded', function(){
+    const input = document.getElementById('profile');
+    const preview = document.getElementById('profilePreview');
+    if(!input || !preview) return;
+    input.addEventListener('change', function(e){
+        const file = e.target.files && e.target.files[0];
+        if(!file) {
+            preview.style.backgroundImage = '';
+            preview.innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        preview.style.backgroundImage = `url(${url})`;
+        preview.innerHTML = '';
+    });
+});
+</script>
+
+
+{% endblock %}

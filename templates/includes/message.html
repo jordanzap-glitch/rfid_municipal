@@ -1,0 +1,10 @@
+{% if messages %}
+  <div class="container mt-3">
+       {% for message in messages %}
+      <div class="visible-message {% if message.tags == 'success' %}success{% elif message.tags == 'error' or message.tags == 'danger' %}error{% endif %}">
+           {{ message }}
+         <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

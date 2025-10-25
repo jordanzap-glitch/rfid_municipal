@@ -1,0 +1,42 @@
+      /* larger rectangular preview box with small rounded corners */
+                            .profile-box{width:160px;height:160px;border-radius:8px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;color:#666;border:1px solid #ddd;overflow:hidden;background-size:cover;background-position:center}
+                            .profile-upload-label{cursor:pointer}
+                            /* visible message styling */
+                            .visible-message {
+                                background: #f8f9fa;
+                                border: 1px solid #b3b3b3;
+                                color: #333;
+                                padding: 12px 18px;
+                                margin-bottom: 10px;
+                                border-radius: 7px;
+                                font-size: 16px;
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                                font-weight: 500;
+                                letter-spacing: 0.2px;
+                                position: relative;
+                                transition: opacity 0.2s;
+                            }
+                            .visible-message.success {
+                                background: #eafaf1;
+                                border-color: #38c172;
+                                color: #218838;
+                            }
+                            .visible-message.error {
+                                background: #fdeaea;
+                                border-color: #e3342f;
+                                color: #b71c1c;
+                            }
+                            .visible-message .close-btn {
+                                position: absolute;
+                                top: 8px;
+                                right: 12px;
+                                background: none;
+                                border: none;
+                                font-size: 20px;
+                                color: #888;
+                                cursor: pointer;
+                                line-height: 1;
+                            }
+                            .visible-message .close-btn:hover {
+                                color: #333;
+                            }

@@ -29,7 +29,11 @@ urlpatterns = [
     path('doLogin', views.doLogin, name='doLogin'),
     
     
-    #admin
+    # admin
     path('sysadmin/home', sysadmin_views.home, name='sysadmin_home'),
-    
+    # show registration form
+    path('sysadmin/register', sysadmin_views.registration_member, name='sysadmin_register'),
+    # ajax
+    path('ajax/municipalities/', sysadmin_views.get_municipalities, name='ajax_municipalities'),
+    path('ajax/barangays/', sysadmin_views.get_barangays, name='ajax_barangays'),
 ]+ static(settings.MEDIA_URL,document_root = settings.MEDIA_ROOT)

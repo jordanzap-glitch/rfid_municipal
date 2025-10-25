@@ -14,7 +14,7 @@ class CustomUser(AbstractUser):
     email = models.EmailField(max_length=150, unique=True)
     
  
-class RifdAuth(models.Model):
+class RfidAuth(models.Model):
     STATUS_CHOICES = (
         ('valid', 'Valid'),
         ('invalid', 'Invalid'),
@@ -32,7 +32,7 @@ class Province(models.Model):
     province_name = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.province_namename
+        return self.province_name
     
 
 class Municipality(models.Model):
@@ -54,9 +54,9 @@ class Barangay(models.Model):
 class Registration(models.Model):
     rfid = models.CharField(max_length=50, unique=True, blank=True, null=True)
 
-    l_name = models.CharField(max_length=100)         
-    f_name = models.CharField(max_length=100)         
-    m_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100)         
+    first_name = models.CharField(max_length=100)         
+    middle_name = models.CharField(max_length=100, blank=True, null=True)
     name_extension = models.CharField(max_length=10, blank=True, null=True)  # Jr, Sr...
 
     date_of_birth = models.DateField()
@@ -69,7 +69,9 @@ class Registration(models.Model):
     mobile_no = models.CharField(max_length=20)
 
     date_added = models.DateTimeField(auto_now_add=True)
+    profile_pic = models.ImageField(upload_to='profiles/', blank=True, null=True)
 
     def __str__(self):
-        return f"{self.l_name}, {self.f_name} {self.m_name or ''}".strip()   
+        return f"{self.last_name}, {self.first_name} {self.middle_name or ''}".strip()
+    
 
