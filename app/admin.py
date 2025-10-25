@@ -9,6 +9,13 @@ class UserModel(UserAdmin):
     search_fields = ['username', 'email', 'first_name', 'last_name']
     list_filter = ['is_active', 'is_staff', 'user_type']
 
+    fieldsets = UserAdmin.fieldsets + (
+        (None, {'fields': ('user_type',)}),
+    )
+    add_fieldsets = UserAdmin.add_fieldsets + (
+        (None, {'fields': ('user_type',)}),
+    )
+
 admin.site.register(CustomUser, UserModel)
 admin.site.register(Registration)
 admin.site.register(RfidAuth)

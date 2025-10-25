@@ -5,9 +5,9 @@ from django.contrib.auth.models import AbstractUser
 class CustomUser(AbstractUser):
     # User information
     USER = (
-        (1, 'hoo'),
-        (2, 'sysadmin'),
-        (3, 'subadmin'),
+        ('1', 'hoo'),
+        ('2', 'sysadmin'),
+        ('3', 'subadmin'),
     )
     user_type = models.CharField(choices=USER, max_length=25)
     profile_pic = models.ImageField(upload_to='profile_pic/')
