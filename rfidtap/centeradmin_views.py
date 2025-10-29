@@ -14,6 +14,30 @@ def home(request):
 
 def APPROVAL_TABLE(request):
     from app.models import bsrcenter, Registration
+    # Handle approval POST
+    if request.method == 'POST':
+        bsrcenter_id = request.POST.get('id')
+        if bsrcenter_id:
+            try:
+                b = bsrcenter.objects.get(id=bsrcenter_id)
+                # Check for existing approved record for same registration and medicine
+                exists = bsrcenter.objects.filter(
+                    registration=b.registration,
+                    medicines=b.medicines,
+                    status='approved'
+                ).exists()
+                if not exists:
+                    bsrcenter.objects.create(
+                        registration=b.registration,
+                        medicines=b.medicines,
+                        age=b.age,
+                        amount=b.amount,
+                        date_claimed=b.date_claimed,
+                        date_claim_expiry=b.date_claim_expiry,
+                        status='approved'
+                    )
+            except bsrcenter.DoesNotExist:
+                pass
     bsrcenters = bsrcenter.objects.select_related('registration', 'medicines').all()
     data = []
     for b in bsrcenters:
