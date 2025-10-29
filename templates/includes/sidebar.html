@@ -9,39 +9,84 @@
           </div>
           <ul class="sidebar-menu">
             <li class="menu-header">Dashboard</li>
-            <li class="dropdown">
-              <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
-              <ul class="dropdown-menu">
-                <li><a class="nav-link" href="index-0.html">General Dashboard</a></li>
-                <li><a class="nav-link" href="index.html">Analytics</a></li>
-              </ul>
-            </li>
-            <li class="menu-header">Actions</li>
-            <li class="dropdown">
-              <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Registrations</span></a>
-              <ul class="dropdown-menu">
-                <li><a class="nav-link" href="{% url 'sysadmin_register' %}">Register</a></li>
-                <li><a class="nav-link" href="layout-transparent.html">Tables</a></li>
-              </ul>
-            </li>
-            <li><a class="nav-link" href="blank.html"><i class="far fa-square"></i> <span>Blank Page</span></a></li>
-            <li class="dropdown">
-              <a href="#" class="nav-link has-dropdown"><i class="fas fa-th"></i> <span>Bootstrap</span></a>
-              <ul class="dropdown-menu">
-                <li><a class="nav-link" href="bootstrap-alert.html">Alert</a></li>
-                <li><a class="nav-link" href="bootstrap-badge.html">Badge</a></li>
-                <li><a class="nav-link" href="bootstrap-breadcrumb.html">Breadcrumb</a></li>
-                <li><a class="nav-link" href="bootstrap-buttons.html">Buttons</a></li>
-              </ul>
-            </li>
-            
-            
-                   
-            
-            
-           
-            
-          </ul>
+            {% if request.user.is_authenticated %}
+              {% if request.user.user_type == '1' %}
+                <!-- HOO Home Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'hoo_home' %}">General Dashboard</a></li>
+                  </ul>
+                </li>
+                <li class="menu-header">Actions</li>
+                <!-- Add HOO-specific menu items here -->
+              {% elif request.user.user_type == '2' %}
+                <!-- Sysadmin Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'sysadmin_home' %}">Sysadmin Dashboard</a></li>
+                  </ul>
+                </li>
+                <li class="menu-header">Actions</li>
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Registrations</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'sysadmin_register' %}">Register</a></li>
+                  </ul>
+                </li>
+              {% elif request.user.user_type == '3' %}
+                <!-- Municipal Admin Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'municipaladmin_home' %}">Municipal Dashboard</a></li>
+                  </ul>
+                </li>
+                <li class="menu-header">Actions</li>
+                <!-- Add Municipal Admin-specific menu items here -->
+              {% elif request.user.user_type == '4' %}
+                <!-- Center Admin Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'admincenter_home' %}">Center Dashboard</a></li>
+                  </ul>
+                </li>
 
+                <li class="menu-header">Informations</li>
+                  <li class="dropdown">
+                    <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Tables</span></a>
+                    <ul class="dropdown-menu">
+                      <li><a class="nav-link" href="{% url 'approval_table' %}">Approval Table</a></li>
+                    </ul>
+                </li>
+                <li class="menu-header">Actions</li>
+                <!-- Add Center Admin-specific menu items here -->
+              {% elif request.user.user_type == '5' %}
+                <!-- Center Staff Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'centerstaff_home' %}">Center Staff Dashboard</a></li>
+                  </ul>
+                </li>
+                <li class="menu-header">Actions</li>
+                  <li class="dropdown">
+                    <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Applications</span></a>
+                    <ul class="dropdown-menu">
+                      <li><a class="nav-link" href="{% url 'med_form' %}">Med form</a></li>
+                    </ul>
+                </li>
+              {% else %}
+                <!-- Default Sidebar for unknown user_type -->
+                <li><a class="nav-link" href="blank.html"><i class="far fa-square"></i> <span>Blank Page</span></a></li>
+              {% endif %}
+            {% else %}
+              <!-- Not logged in: show minimal sidebar -->
+              <li><a class="nav-link" href="index.html"><i class="fas fa-home"></i> <span>Home</span></a></li>
+            {% endif %}
+          </ul>
+        </aside>
                   </aside>
       </div>

@@ -30,9 +30,9 @@
                                     <span style="font-size:12px;">No image<br>selected</span>
                                 </div>
                                 <div class="mt-2">
-                                    <label for="profile" class="btn btn-sm btn-outline-primary profile-upload-label">Upload</label>
+                                    <label for="profile_pic" class="btn btn-sm btn-outline-primary profile-upload-label">Upload</label>
                                 </div>
-                                <input type="file" name="profile" id="profile" accept="image/*" style="display:none;" />
+                                <input type="file" name="profile_pic" id="profile_pic" accept="image/*" style="display:none;" />
                             </div>
                             <div class="flex-fill">
                                 <p class="text-muted mb-0">Upload a square profile image (recommended 300×300). Click "Upload" to choose a file.
@@ -40,6 +40,8 @@
                             </div>
                         </div>
                         <div class="row">
+                            
+                        
                             <div class="form-group col-md-6">
                                 <label for="rfid">RFID (required)</label>
                                 <input type="text" name="rfid" id="rfid" class="form-control" maxlength="50" />
@@ -82,6 +84,38 @@
                         </div>
 
                         <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="gender">Gender</label>
+                                <select name="gender" id="gender" class="form-control">
+                                    <option value="">-- select gender --</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="civil_status">Civil Status</label>
+                                <select name="civil_status" id="civil_status" class="form-control">
+                                    <option value="">-- select civil status --</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Widowed">Widowed</option>
+                                    <option value="Separated">Separated</option>
+                                    <option value="Divorced">Divorced</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="occupation">Occupation</label>
+                                <input type="text" name="occupation" id="occupation" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="email">Email</label>
+                                <input type="email" name="email" id="email" class="form-control" maxlength="100" required />
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="form-group col-md-4">
                                 <label for="province">Province</label>
                                 <select name="province" id="province" class="form-control" required>
@@ -122,7 +156,7 @@
 <script>
 // Preview selected profile image in the circular preview
 document.addEventListener('DOMContentLoaded', function(){
-    const input = document.getElementById('profile');
+    const input = document.getElementById('profile_pic');
     const preview = document.getElementById('profilePreview');
     if(!input || !preview) return;
     input.addEventListener('change', function(e){

@@ -13,7 +13,7 @@ class UserModel(UserAdmin):
         (None, {'fields': ('user_type',)}),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
-        (None, {'fields': ('user_type',)}),
+        (None, {'fields': ('email', 'user_type')}),
     )
 
 admin.site.register(CustomUser, UserModel)
@@ -22,3 +22,6 @@ admin.site.register(RfidAuth)
 admin.site.register(Province)
 admin.site.register(Municipality)
 admin.site.register(Barangay)
+admin.site.register(bsrcenter)
+admin.site.register(Medicines)
+admin.site.site_header = "RFID TAP Admin"

@@ -7,7 +7,9 @@ class CustomUser(AbstractUser):
     USER = (
         ('1', 'hoo'),
         ('2', 'sysadmin'),
-        ('3', 'subadmin'),
+        ('3',  'municipaladmin'),
+        ('4', 'admincenter'),
+        ('5', 'centerstaff'),
     )
     user_type = models.CharField(choices=USER, max_length=25)
     profile_pic = models.ImageField(upload_to='profile_pic/')
@@ -52,7 +54,7 @@ class Barangay(models.Model):
     
  
 class Registration(models.Model):
-    rfid = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    rfid = models.CharField(max_length=50, unique=True)
 
     last_name = models.CharField(max_length=100)         
     first_name = models.CharField(max_length=100)         
@@ -67,11 +69,47 @@ class Registration(models.Model):
     barangay = models.ForeignKey(Barangay, on_delete=models.CASCADE)
 
     mobile_no = models.CharField(max_length=20)
+    gender = models.CharField(max_length=10, blank=True, null=True)
+    civil_status = models.CharField(max_length=20, blank=True, null=True)
+    occupation = models.CharField(max_length=100, blank=True, null=True)
+    email = models.CharField(max_length=100, blank=True, null=True, unique=True)
 
     date_added = models.DateTimeField(auto_now_add=True)
     profile_pic = models.ImageField(upload_to='profiles/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.last_name}, {self.first_name} {self.middle_name or ''}".strip()
+    
+
+class Medicines(models.Model):
+    medicine_name = models.CharField(max_length=255)
+    dosage = models.CharField(max_length=100)
+    frequency = models.CharField(max_length=100)
+    date_expiry = models.DateField()
+    date_added = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.medicine_name
+
+class bsrcenter(models.Model):
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
+    age = models.IntegerField(default=0)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    medicines = models.ForeignKey(Medicines, on_delete=models.CASCADE)
+    date_claimed = models.DateField(auto_now_add=True)
+    date_claim_expiry = models.DateField()
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+
+    def __str__(self):
+        return f"{self.registration} - {self.medicines}"
+    
+
+
+
     
 

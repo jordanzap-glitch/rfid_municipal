@@ -7,7 +7,9 @@ from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay
-
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import uuid
 
 
 def home(request):
@@ -15,7 +17,7 @@ def home(request):
 
 
 
-def registration_member(request):
+def REGISTRATION_MEMBER(request):
     provinces = Province.objects.all()
     municipality = Municipality.objects.all()
     barangay = Barangay.objects.all()
@@ -27,11 +29,21 @@ def registration_member(request):
         middle_name = request.POST.get('middle_name')
         name_extension = request.POST.get('name_extension')
         date_of_birth = request.POST.get('date_of_birth')
+        place_of_birth = request.POST.get('place_of_birth')
         provinces_id = request.POST.get('province')
         municipality_id = request.POST.get('municipality')
         barangay_id = request.POST.get('barangay')
         profile_pic = request.FILES.get('profile_pic')
+        if profile_pic:
+            ext = profile_pic.name.split('.')[-1]
+            unique_name = f"member_{uuid.uuid4().hex}.{ext}"
+            pic_path = default_storage.save(f'profile_pic/{unique_name}', ContentFile(profile_pic.read()))
+            profile_pic = pic_path
         mobile_no = request.POST.get('mobile_no')
+        gender = request.POST.get('gender')
+        civil_status = request.POST.get('civil_status')
+        occupation = request.POST.get('occupation')
+        email = request.POST.get('email')
         
         if RfidAuth.objects.filter(rfid=rfid, status='invalid', in_use=True).exists():
             messages.error(request, 'RFID is already in use or invalid.')
@@ -54,6 +66,11 @@ def registration_member(request):
                     barangay_id=barangay_id,
                     profile_pic=profile_pic,
                     mobile_no=mobile_no,
+                    gender=gender,
+                    civil_status=civil_status,
+                    occupation=occupation,
+                    email=email,
+                    place_of_birth=place_of_birth
                 )
                 registration.save()
                 # Update RfidAuth status and in_use

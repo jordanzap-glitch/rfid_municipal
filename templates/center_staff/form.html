@@ -1,0 +1,243 @@
+{% extends "includes/base.html" %}
+{% load static %}
+{% block content %} 
+
+
+<section class="section">
+    <div class="section-header d-flex justify-content-between align-items-center">
+        <h1>Registration Details</h1>
+        <button type="button" class="btn btn-outline-info" id="showRfidModalBtn">
+            <i class="fas fa-id-card"></i> Enter RFID
+        </button>
+    </div>
+
+    <div class="section-body">
+        
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8 mx-auto">
+                <form method="post" enctype="multipart/form-data" class="card" action="{% url 'med_form' %}">
+                    {% csrf_token %}
+                    <div class="card-header">
+                        <h4>Registration Information</h4>
+                    </div>
+                    {% include "includes/message.html" %}
+                    <div class="card-body">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="profile-upload mr-3 text-center">
+                                <div id="profilePreview" class="profile-box">
+                                    <span style="font-size:12px;">No image<br>selected</span>
+                                </div>
+                            </div>
+                            <div class="flex-fill">
+                                <p class="text-muted mb-0">Profile image</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="rfid"></label>
+                                   <input type="hidden" name="rfid" id="rfid" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="mobile_no">Mobile Number</label>
+                                <input type="tel" name="mobile_no" id="mobile_no" class="form-control" maxlength="20" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="last_name">Last name</label>
+                                <input type="text" name="last_name" id="last_name" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="first_name">First name</label>
+                                <input type="text" name="first_name" id="first_name" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="middle_name">Middle name</label>
+                                <input type="text" name="middle_name" id="middle_name" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="name_extension">Name extension</label>
+                                <input type="text" name="name_extension" id="name_extension" class="form-control" maxlength="10" readonly />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="date_of_birth">Date of birth</label>
+                                <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="place_of_birth">Place of birth</label>
+                                <input type="text" name="place_of_birth" id="place_of_birth" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="gender">Gender</label>
+                                <input type="text" name="gender" id="gender" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="civil_status">Civil Status</label>
+                                <input type="text" name="civil_status" id="civil_status" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="occupation">Occupation</label>
+                                <input type="text" name="occupation" id="occupation" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="email">Email</label>
+                                <input type="email" name="email" id="email" class="form-control" maxlength="100" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="province">Province</label>
+                                <input type="text" name="province" id="province" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="municipality">Municipality</label>
+                                <input type="text" name="municipality" id="municipality" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="barangay">Barangay</label>
+                                <input type="text" name="barangay" id="barangay" class="form-control" readonly />
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="card-header">
+                        <h4>Assistance</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="form-group col-md-2">
+                                <label for="age">Age</label>
+                                <input type="number" name="age" id="age" class="form-control" min="0" />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="amount">Amount</label>
+                                <input type="number" step="0.01" name="amount" id="amount" class="form-control" min="0" />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="medicines">Medicine</label>
+                                <select name="medicines" id="medicines" class="form-control">
+                                    <option value="">-- select medicine --</option>
+                                    {% for med in medicines %}
+                                        <option value="{{ med.id }}">{{ med.medicine_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <!-- Status is always 'pending' on insert, dropdown removed -->
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="date_claimed">Date Claimed</label>
+                                <input type="date" name="date_claimed" id="date_claimed" class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="date_claim_expiry">Date Claim Expiry</label>
+                                <input type="date" name="date_claim_expiry" id="date_claim_expiry" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-12 text-right">
+                                <button type="submit" class="btn btn-outline-primary">Save Assistance</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- RFID Modal -->
+<div class="modal fade" id="rfidModal" tabindex="-1" role="dialog" aria-labelledby="rfidModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rfidModalLabel">Enter RFID</h5>
+      </div>
+            <div class="modal-body">
+                    <div class="mb-2 text-center text-muted">Tap the RFID to show information</div>
+                    <input type="text" id="rfidInput" class="form-control" placeholder="Scan RFID" autofocus  />
+                <div id="rfidError" class="text-danger mt-2" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+    <button type="button" class="btn btn-primary" id="rfidSubmit" style="display:none;">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Show modal when button is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('showRfidModalBtn').onclick = function() {
+        $('#rfidModal').modal({backdrop: 'static', keyboard: false});
+        $('#rfidModal').modal('show');
+    };
+    document.getElementById('rfidSubmit').onclick = function() {
+        submitRFID();
+    };
+    document.getElementById('rfidInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') submitRFID();
+    });
+        // Autofocus RFID input when modal is shown
+        $('#rfidModal').on('shown.bs.modal', function () {
+            document.getElementById('rfidInput').focus();
+        });
+});
+
+function submitRFID() {
+    var rfid = document.getElementById('rfidInput').value.trim();
+    var errorDiv = document.getElementById('rfidError');
+    if (!rfid) {
+        errorDiv.textContent = 'Please enter RFID.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    errorDiv.style.display = 'none';
+    // AJAX to check RFID
+    fetch('/api/registration/' + encodeURIComponent(rfid) + '/')
+        .then(function(response) {
+            if (!response.ok) throw new Error('Not found');
+            return response.json();
+        })
+        .then(function(data) {
+            // Fill form fields
+            document.getElementById('rfid').value = data.rfid || '';
+            document.getElementById('mobile_no').value = data.mobile_no || '';
+            document.getElementById('last_name').value = data.last_name || '';
+            document.getElementById('first_name').value = data.first_name || '';
+            document.getElementById('middle_name').value = data.middle_name || '';
+            document.getElementById('name_extension').value = data.name_extension || '';
+            document.getElementById('date_of_birth').value = data.date_of_birth || '';
+            document.getElementById('place_of_birth').value = data.place_of_birth || '';
+            document.getElementById('gender').value = data.gender || '';
+            document.getElementById('civil_status').value = data.civil_status || '';
+            document.getElementById('occupation').value = data.occupation || '';
+            document.getElementById('email').value = data.email || '';
+            document.getElementById('province').value = data.province_name || '';
+            document.getElementById('municipality').value = data.municipality_name || '';
+            document.getElementById('barangay').value = data.barangay_name || '';
+            // Profile image preview
+            if (data.profile_pic_url) {
+                document.getElementById('profilePreview').style.backgroundImage = `url(${data.profile_pic_url})`;
+                document.getElementById('profilePreview').innerHTML = '';
+            } else {
+                document.getElementById('profilePreview').style.backgroundImage = '';
+                document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
+            }
+            // Close modal
+            $('#rfidModal').modal('hide');
+        })
+        .catch(function() {
+            errorDiv.textContent = 'RFID not found.';
+            errorDiv.style.display = 'block';
+        });
+}
+</script>
+
+{% endblock %}
