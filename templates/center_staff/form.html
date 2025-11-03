@@ -106,6 +106,32 @@
                         </div>
                     </div>
                     <hr>
+                        <!-- Previous Assistance Card -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4>Previous Assistance</h4>
+                            </div>
+                            <div class="card-body">
+                                {% if previous_assistance %}
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <strong>Amount:</strong> {{ previous_assistance.amount }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>Medicine:</strong> {{ previous_assistance.medicine_name }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>Date Claimed:</strong> {{ previous_assistance.date_claimed }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>Date Claim Expiry:</strong> {{ previous_assistance.date_claim_expiry }}
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="text-muted">No previous assistance found.</div>
+                                {% endif %}
+                            </div>
+                        </div>
                     <div class="card-header">
                         <h4>Assistance</h4>
                     </div>
@@ -119,14 +145,17 @@
                                 <label for="amount">Amount</label>
                                 <input type="number" step="0.01" name="amount" id="amount" class="form-control" min="0" />
                             </div>
-                            <div class="form-group col-md-4">
-                                <label for="medicines">Medicine</label>
-                                <select name="medicines" id="medicines" class="form-control">
-                                    <option value="">-- select medicine --</option>
-                                    {% for med in medicines %}
-                                        <option value="{{ med.id }}">{{ med.medicine_name }}</option>
-                                    {% endfor %}
-                                </select>
+                            <div class="form-group col-md-4" style="position:relative;">
+                                <label for="medicineSearch">Medicine</label>
+                                <!--
+                                    Realtime searchable medicine input.
+                                    Visible input `medicineSearch` for typing/searching.
+                                    Hidden input `medicines` carries the selected medicine id for form submission.
+                                -->
+                                <input type="text" id="medicineSearch" class="form-control" placeholder="Search medicine..." autocomplete="off" />
+                                <!-- container for selected medicines: each selection creates a hidden input name="medicines" value="<id>" -->
+                                <div id="selectedMedicines" class="mt-2"></div>
+                                <div id="medicineSuggestions" class="list-group" style="position:absolute;z-index:1050;left:0;right:0;display:none;max-height:220px;overflow:auto;"></div>
                             </div>
                             <!-- Status is always 'pending' on insert, dropdown removed -->
                         </div>
@@ -200,7 +229,7 @@ function submitRFID() {
     }
     errorDiv.style.display = 'none';
     // AJAX to check RFID
-    fetch('/api/registration/' + encodeURIComponent(rfid) + '/')
+    fetch('/get/registration/' + encodeURIComponent(rfid) + '/')
         .then(function(response) {
             if (!response.ok) throw new Error('Not found');
             return response.json();
@@ -230,6 +259,23 @@ function submitRFID() {
                 document.getElementById('profilePreview').style.backgroundImage = '';
                 document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
             }
+
+            // Show previous assistance
+            var pa = data.previous_assistance || null;
+            var paCard = document.querySelector('.card.mb-4 .card-body');
+            if (paCard) {
+                if (pa) {
+                    paCard.innerHTML = `<div class="row">
+                        <div class="col-md-3"><strong>Amount:</strong> ${pa.amount || ''}</div>
+                        <div class="col-md-3"><strong>Medicine:</strong> ${pa.medicine_name || ''}</div>
+                        <div class="col-md-3"><strong>Date Claimed:</strong> ${pa.date_claimed || ''}</div>
+                        <div class="col-md-3"><strong>Date Claim Expiry:</strong> ${pa.date_claim_expiry || ''}</div>
+                    </div>`;
+                } else {
+                    paCard.innerHTML = '<div class="text-muted">No previous assistance found.</div>';
+                }
+            }
+
             // Close modal
             $('#rfidModal').modal('hide');
         })
@@ -238,6 +284,151 @@ function submitRFID() {
             errorDiv.style.display = 'block';
         });
 }
+
+// ===== Medicine search / select =====
+// Build a client-side list of medicines from the template context
+var medicinesList = [
+    {% for med in medicines %}
+        { id: '{{ med.id }}', name: '{{ med.medicine_name|escapejs }}' }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+function setupMedicineSearch() {
+    var input = document.getElementById('medicineSearch');
+    var selectedContainer = document.getElementById('selectedMedicines');
+    var suggestions = document.getElementById('medicineSuggestions');
+    var activeIndex = -1;
+
+    function render(list) {
+        suggestions.innerHTML = '';
+        if (!list.length) {
+            suggestions.style.display = 'none';
+            return;
+        }
+        list.forEach(function(item, idx) {
+            var el = document.createElement('button');
+            el.type = 'button';
+            el.className = 'list-group-item list-group-item-action';
+            el.textContent = item.name;
+            el.setAttribute('data-id', item.id);
+            el.addEventListener('click', function() {
+                selectItem(item);
+            });
+            suggestions.appendChild(el);
+        });
+        activeIndex = -1;
+        suggestions.style.display = 'block';
+    }
+
+    function isSelected(id) {
+        return !!selectedContainer.querySelector('input[name="medicines"][value="' + id + '"]');
+    }
+
+    function createSelectedBadge(item) {
+        var badge = document.createElement('span');
+        badge.className = 'badge badge-primary mr-1 mb-1';
+        badge.style.fontSize = '90%';
+        badge.textContent = item.name;
+
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'ml-2 close text-white';
+        removeBtn.style.opacity = '0.9';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.addEventListener('click', function() {
+            // remove hidden input and badge
+            var hidden = selectedContainer.querySelector('input[name="medicines"][value="' + item.id + '"]');
+            if (hidden) hidden.remove();
+            badge.remove();
+        });
+
+        // hidden input to submit
+        var hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'medicines';
+        hiddenInput.value = item.id;
+
+        badge.appendChild(removeBtn);
+        selectedContainer.appendChild(badge);
+        selectedContainer.appendChild(hiddenInput);
+    }
+
+    function selectItem(item) {
+        if (isSelected(item.id)) {
+            // already selected: briefly highlight
+            var existing = selectedContainer.querySelector('input[name="medicines"][value="' + item.id + '"]').previousSibling;
+            if (existing) {
+                existing.classList.add('badge-success');
+                setTimeout(function(){ existing.classList.remove('badge-success'); }, 400);
+            }
+        } else {
+            createSelectedBadge(item);
+        }
+        input.value = '';
+        suggestions.style.display = 'none';
+        input.focus();
+    }
+
+    function update() {
+        var q = input.value.trim().toLowerCase();
+        if (!q) {
+            suggestions.style.display = 'none';
+            return;
+        }
+        var filtered = medicinesList.filter(function(m) {
+            if (isSelected(m.id)) return false; // exclude already selected
+            return m.name.toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 20);
+        render(filtered);
+    }
+
+    input.addEventListener('input', function() {
+        // keep selected items in selectedContainer; clear search
+        update();
+    });
+
+    input.addEventListener('keydown', function(e) {
+        var items = suggestions.querySelectorAll('.list-group-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+            items.forEach(function(it, i){ it.classList.toggle('active', i===activeIndex); });
+            items[activeIndex].scrollIntoView({block:'nearest'});
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            items.forEach(function(it, i){ it.classList.toggle('active', i===activeIndex); });
+            items[activeIndex].scrollIntoView({block:'nearest'});
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && items[activeIndex]) {
+                e.preventDefault();
+                var id = items[activeIndex].getAttribute('data-id');
+                var name = items[activeIndex].textContent;
+                selectItem({id: id, name: name});
+            }
+        } else if (e.key === 'Escape') {
+            suggestions.style.display = 'none';
+        }
+    });
+
+    // hide suggestions shortly after blur so click can register
+    input.addEventListener('blur', function() {
+        setTimeout(function(){ suggestions.style.display = 'none'; }, 150);
+    });
+
+    // clicking outside should hide suggestions
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+            suggestions.style.display = 'none';
+        }
+    });
+}
+
+// initialize medicine search after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    setupMedicineSearch();
+});
 </script>
 
 {% endblock %}

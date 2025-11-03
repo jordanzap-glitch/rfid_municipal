@@ -12,14 +12,15 @@ from django.views.decorators.csrf import csrf_exempt
 def home(request):
     return render(request,'center_staff/home.html')
 
-def med_form(request):
+def MED_FORM(request):
     medicines = Medicines.objects.all()
     context = { 'medicines': medicines }
     if request.method == 'POST':
         rfid = request.POST.get('rfid')
         age = request.POST.get('age')
         amount = request.POST.get('amount')
-        medicines_id = request.POST.get('medicines')
+        # multiple medicines can be submitted with the same name -> use getlist
+        medicines_ids = request.POST.getlist('medicines')
         date_claimed = request.POST.get('date_claimed')
         date_claim_expiry = request.POST.get('date_claim_expiry')
         # Get registration object
@@ -28,30 +29,62 @@ def med_form(request):
         except Registration.DoesNotExist:
             messages.error(request, 'Registration not found for RFID.')
             return render(request, 'center_staff/form.html', context)
-        # Get medicine object
-        try:
-            medicine = Medicines.objects.get(id=medicines_id)
-        except Medicines.DoesNotExist:
-            messages.error(request, 'Medicine not found.')
+
+        if not medicines_ids:
+            messages.error(request, 'No medicine selected.')
             return render(request, 'center_staff/form.html', context)
-        # Insert into bsrcenter
-        bsrcenter.objects.create(
-            registration=registration,
-            age=age or 0,
-            amount=amount or 0,
-            medicines=medicine,
-            date_claimed=date_claimed,
-            date_claim_expiry=date_claim_expiry,
-            status='pending'
-        )
-        messages.success(request, 'Assistance saved successfully.')
+
+        from datetime import date
+        today = date.today()
+
+        success_count = 0
+        errors = []
+
+        for mid in medicines_ids:
+            try:
+                medicine = Medicines.objects.get(id=mid)
+            except Medicines.DoesNotExist:
+                errors.append(f'Medicine not found (id={mid}).')
+                continue
+
+            # Prevent duplicate assistance if not expired and approved
+            existing = bsrcenter.objects.filter(
+                registration=registration,
+                medicines=medicine,
+                status='approved',
+                date_claim_expiry__gte=today
+            ).first()
+            if existing:
+                errors.append(f'Cannot save assistance for "{medicine.medicine_name}": previous approved assistance is still active.')
+                continue
+
+            # Insert into bsrcenter for this medicine
+            bsrcenter.objects.create(
+                registration=registration,
+                age=age or 0,
+                amount=amount or 0,
+                medicines=medicine,
+                date_claimed=date_claimed,
+                date_claim_expiry=date_claim_expiry,
+                status='pending'
+            )
+            success_count += 1
+
+        if success_count:
+            # clearer message that the assistance entries are created and pending approval
+            messages.success(request, f'{success_count} assistance request(s) submitted and are pending approval.')
+        # show any errors encountered
+        for e in errors:
+            messages.error(request, e)
+
+        # redirect back to form (messages persist) so user can see results
         return redirect('med_form')
     return render(request,'center_staff/form.html', context)
 
 
 @require_GET
 @csrf_exempt
-def registration_api(request, rfid):
+def GET_REGISTRATION(request, rfid):
     try:
         reg = Registration.objects.select_related('province', 'municipality', 'barangay').get(rfid=rfid)
         data = {
@@ -72,6 +105,17 @@ def registration_api(request, rfid):
             'email': reg.email,
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
         }
+        # Get latest previous assistance for this registration
+        prev = bsrcenter.objects.filter(registration=reg).order_by('-id').first()
+        if prev:
+            data['previous_assistance'] = {
+                'amount': prev.amount,
+                'medicine_name': prev.medicines.medicine_name if prev.medicines else '',
+                'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if prev.date_claimed else '',
+                'date_claim_expiry': prev.date_claim_expiry.strftime('%Y-%m-%d') if prev.date_claim_expiry else '',
+            }
+        else:
+            data['previous_assistance'] = None
         return JsonResponse(data)
     except Registration.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
