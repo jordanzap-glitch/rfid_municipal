@@ -13,23 +13,23 @@ def home(request):
     return render(request,'center_admin/home.html')
 
 def APPROVAL_TABLE(request):
-    from app.models import bsrcenter, Registration
+    from app.models import Bsrcenter, Registration
 
-    # Handle approval POST: accept registration_id and approve all bsrcenter entries for that registration
+    # Handle approval POST: accept registration_id and approve all Bsrcenter entries for that registration
     if request.method == 'POST':
         registration_id = request.POST.get('registration_id') or request.POST.get('id')
         if registration_id:
             try:
-                entries = bsrcenter.objects.filter(registration_id=registration_id)
+                entries = Bsrcenter.objects.filter(registration_id=registration_id)
                 for b in entries:
                     # create an approved record per medicine if not exists
-                    exists = bsrcenter.objects.filter(
+                    exists = Bsrcenter.objects.filter(
                         registration=b.registration,
                         medicines=b.medicines,
                         status='approved'
                     ).exists()
                     if not exists:
-                        bsrcenter.objects.create(
+                        Bsrcenter.objects.create(
                             registration=b.registration,
                             medicines=b.medicines,
                             age=b.age,
@@ -42,10 +42,10 @@ def APPROVAL_TABLE(request):
                 # keep behavior tolerant; ignore issues and continue
                 pass
 
-    # Aggregate bsrcenter rows by registration
-    bsrcenters = bsrcenter.objects.select_related('registration', 'medicines').all().order_by('registration_id')
+    # Aggregate Bsrcenter rows by registration
+    Bsrcenters = Bsrcenter.objects.select_related('registration', 'medicines').all().order_by('registration_id')
     grouped = {}
-    for b in bsrcenters:
+    for b in Bsrcenters:
         reg = b.registration
         key = reg.id
         if key not in grouped:
@@ -120,17 +120,17 @@ def APPROVAL_TABLE(request):
             'status': agg_status,
         })
 
-    context = {'bsrcenter_data': data}
+    context = {'Bsrcenter_data': data}
     return render(request,'center_admin/approval_table.html', context)
 
-# AJAX endpoint to get bsrcenter info by id for modal
+# AJAX endpoint to get Bsrcenter info by id for modal
 @require_GET
 def GET_BSR_CENTER_INFO(request):
-    from app.models import bsrcenter, Registration
+    from app.models import Bsrcenter, Registration
     registration_id = request.GET.get('registration_id') or request.GET.get('id')
     if not registration_id:
         return JsonResponse({'error': 'Missing registration_id'}, status=400)
-    entries = bsrcenter.objects.select_related('registration', 'medicines').filter(registration_id=registration_id)
+    entries = Bsrcenter.objects.select_related('registration', 'medicines').filter(registration_id=registration_id)
     if not entries.exists():
         return JsonResponse({'error': 'Not found'}, status=404)
     reg = entries[0].registration

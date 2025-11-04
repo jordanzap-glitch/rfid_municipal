@@ -22,6 +22,6 @@ admin.site.register(RfidAuth)
 admin.site.register(Province)
 admin.site.register(Municipality)
 admin.site.register(Barangay)
-admin.site.register(bsrcenter)
+admin.site.register(Bsrcenter)
 admin.site.register(Medicines)
 admin.site.site_header = "RFID TAP Admin"

@@ -91,11 +91,11 @@ class Medicines(models.Model):
     def __str__(self):
         return self.medicine_name
 
-class bsrcenter(models.Model):
+class Bsrcenter(models.Model):
+    tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
     age = models.IntegerField(default=0)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    medicines = models.ForeignKey(Medicines, on_delete=models.CASCADE)
     date_claimed = models.DateField(auto_now_add=True)
     date_claim_expiry = models.DateField()
     STATUS_CHOICES = (
@@ -104,10 +104,21 @@ class bsrcenter(models.Model):
         ('rejected', 'Rejected'),
     )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    barangay_indigency = models.BooleanField(default=False)
+    barangay_recidency = models.BooleanField(default=False)
+    diagnosis = models.TextField (blank=True, null=True)
+    
+    def __str__(self):
+        # Bsrcenter no longer stores a direct medicines FK on the model;
+        # show registration and tracking number (or id) for readability.
+        return f"{self.registration} - {self.tracking_number or self.id}"
+
+class Bsrcenter_meds(models.Model):
+    bsrcenter = models.ForeignKey(Bsrcenter, on_delete=models.CASCADE)
+    medicines = models.ForeignKey(Medicines, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.registration} - {self.medicines}"
-    
+        return f"{self.bsrcenter.registration} - {self.medicines.medicine_name}"
 
 
 

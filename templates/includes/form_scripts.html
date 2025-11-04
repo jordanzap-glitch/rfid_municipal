@@ -1,0 +1,252 @@
+<script>
+// Show modal when button is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('showRfidModalBtn').onclick = function() {
+        $('#rfidModal').modal({backdrop: 'static', keyboard: false});
+        $('#rfidModal').modal('show');
+    };
+    document.getElementById('rfidSubmit').onclick = function() {
+        submitRFID();
+    };
+    document.getElementById('rfidInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') submitRFID();
+    });
+        // Autofocus RFID input when modal is shown
+        $('#rfidModal').on('shown.bs.modal', function () {
+            document.getElementById('rfidInput').focus();
+        });
+});
+
+function submitRFID() {
+    var rfid = document.getElementById('rfidInput').value.trim();
+    var errorDiv = document.getElementById('rfidError');
+    if (!rfid) {
+        errorDiv.textContent = 'Please enter RFID.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    errorDiv.style.display = 'none';
+    // AJAX to check RFID
+    fetch('/get/registration/' + encodeURIComponent(rfid) + '/')
+        .then(function(response) {
+            if (!response.ok) throw new Error('Not found');
+            return response.json();
+        })
+        .then(function(data) {
+            // Fill form fields
+            document.getElementById('rfid').value = data.rfid || '';
+            document.getElementById('mobile_no').value = data.mobile_no || '';
+            document.getElementById('last_name').value = data.last_name || '';
+            document.getElementById('first_name').value = data.first_name || '';
+            document.getElementById('middle_name').value = data.middle_name || '';
+            document.getElementById('name_extension').value = data.name_extension || '';
+            document.getElementById('date_of_birth').value = data.date_of_birth || '';
+            document.getElementById('place_of_birth').value = data.place_of_birth || '';
+            document.getElementById('gender').value = data.gender || '';
+            document.getElementById('civil_status').value = data.civil_status || '';
+            document.getElementById('occupation').value = data.occupation || '';
+            document.getElementById('email').value = data.email || '';
+            document.getElementById('province').value = data.province_name || '';
+            document.getElementById('municipality').value = data.municipality_name || '';
+            document.getElementById('barangay').value = data.barangay_name || '';
+            // Profile image preview
+            if (data.profile_pic_url) {
+                document.getElementById('profilePreview').style.backgroundImage = `url(${data.profile_pic_url})`;
+                document.getElementById('profilePreview').innerHTML = '';
+            } else {
+                document.getElementById('profilePreview').style.backgroundImage = '';
+                document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
+            }
+
+            // Show previous assistance
+            var pa = data.previous_assistance || null;
+            var paCard = document.querySelector('.card.mb-4 .card-body');
+            if (paCard) {
+                if (pa) {
+                    paCard.innerHTML = `<div class="row">
+                        <div class="col-md-3"><strong>Amount:</strong> ${pa.amount || ''}</div>
+                        <div class="col-md-3"><strong>Medicine:</strong> ${pa.medicine_name || ''}</div>
+                        <div class="col-md-3"><strong>Date Claimed:</strong> ${pa.date_claimed || ''}</div>
+                        <div class="col-md-3"><strong>Date Claim Expiry:</strong> ${pa.date_claim_expiry || ''}</div>
+                    </div>`;
+                } else {
+                    paCard.innerHTML = '<div class="text-muted">No previous assistance found.</div>';
+                }
+            }
+
+            // Close modal
+            $('#rfidModal').modal('hide');
+        })
+        .catch(function() {
+            errorDiv.textContent = 'RFID not found.';
+            errorDiv.style.display = 'block';
+        });
+}
+
+// ===== Medicine search / select =====
+// Build a client-side list of medicines from the template context
+var medicinesList = [
+    {% for med in medicines %}
+        { id: '{{ med.id }}', name: '{{ med.medicine_name|escapejs }}' }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+function setupMedicineSearch() {
+    var input = document.getElementById('medicineSearch');
+    var selectedContainer = document.getElementById('selectedMedicines');
+    var suggestions = document.getElementById('medicineSuggestions');
+    var activeIndex = -1;
+
+    function render(list) {
+        suggestions.innerHTML = '';
+        if (!list.length) {
+            suggestions.style.display = 'none';
+            return;
+        }
+        list.forEach(function(item, idx) {
+            var el = document.createElement('button');
+            el.type = 'button';
+            el.className = 'list-group-item list-group-item-action';
+            el.textContent = item.name;
+            el.setAttribute('data-id', item.id);
+            el.addEventListener('click', function() {
+                selectItem(item);
+            });
+            suggestions.appendChild(el);
+        });
+        activeIndex = -1;
+        suggestions.style.display = 'block';
+    }
+
+    function isSelected(id) {
+        return !!selectedContainer.querySelector('input[name="medicines"][value="' + id + '"]');
+    }
+
+    function createSelectedBadge(item) {
+        var badge = document.createElement('span');
+        badge.className = 'badge badge-primary mr-1 mb-1';
+        badge.style.fontSize = '90%';
+        badge.textContent = item.name;
+
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'ml-2 close text-white';
+        removeBtn.style.opacity = '0.9';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.addEventListener('click', function() {
+            // remove hidden input and badge
+            var hidden = selectedContainer.querySelector('input[name="medicines"][value="' + item.id + '"]');
+            if (hidden) hidden.remove();
+            badge.remove();
+        });
+
+        // hidden input to submit
+        var hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'medicines';
+        hiddenInput.value = item.id;
+
+        badge.appendChild(removeBtn);
+        selectedContainer.appendChild(badge);
+        selectedContainer.appendChild(hiddenInput);
+    }
+
+    function selectItem(item) {
+        if (isSelected(item.id)) {
+            // already selected: briefly highlight
+            var existing = selectedContainer.querySelector('input[name="medicines"][value="' + item.id + '"]').previousSibling;
+            if (existing) {
+                existing.classList.add('badge-success');
+                setTimeout(function(){ existing.classList.remove('badge-success'); }, 400);
+            }
+        } else {
+            createSelectedBadge(item);
+        }
+        input.value = '';
+        suggestions.style.display = 'none';
+        input.focus();
+    }
+
+    function update() {
+        var q = input.value.trim().toLowerCase();
+        if (!q) {
+            suggestions.style.display = 'none';
+            return;
+        }
+        var filtered = medicinesList.filter(function(m) {
+            if (isSelected(m.id)) return false; // exclude already selected
+            return m.name.toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 20);
+        render(filtered);
+    }
+
+    input.addEventListener('input', function() {
+        // keep selected items in selectedContainer; clear search
+        update();
+    });
+
+    input.addEventListener('keydown', function(e) {
+        var items = suggestions.querySelectorAll('.list-group-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+            items.forEach(function(it, i){ it.classList.toggle('active', i===activeIndex); });
+            items[activeIndex].scrollIntoView({block:'nearest'});
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            items.forEach(function(it, i){ it.classList.toggle('active', i===activeIndex); });
+            items[activeIndex].scrollIntoView({block:'nearest'});
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && items[activeIndex]) {
+                e.preventDefault();
+                var id = items[activeIndex].getAttribute('data-id');
+                var name = items[activeIndex].textContent;
+                selectItem({id: id, name: name});
+            }
+        } else if (e.key === 'Escape') {
+            suggestions.style.display = 'none';
+        }
+    });
+
+    // hide suggestions shortly after blur so click can register
+    input.addEventListener('blur', function() {
+        setTimeout(function(){ suggestions.style.display = 'none'; }, 150);
+    });
+
+    // clicking outside should hide suggestions
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+            suggestions.style.display = 'none';
+        }
+    });
+}
+
+// initialize medicine search after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    setupMedicineSearch();
+    // If server provided a recent_bsr in context, show the modal to allow printing
+    {% if recent_bsr %}
+        $('#bsrModal').modal({backdrop: 'static', keyboard: false});
+        $('#bsrModal').modal('show');
+    {% endif %}
+});
+
+// Print modal contents in a new window (simple approach)
+document.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'bsrPrintBtn') {
+        var content = document.querySelector('#bsrModal .modal-body').innerHTML;
+        var w = window.open('', '_blank');
+        w.document.write('<html><head><title>Print Assistance</title>');
+        w.document.write('<link rel="stylesheet" href="/static/css/style.css">');
+        w.document.write('</head><body>');
+        w.document.write('<h3>Assistance Details</h3>');
+        w.document.write(content);
+        w.document.write('</body></html>');
+        w.document.close();
+        w.focus();
+        setTimeout(function(){ w.print(); w.close(); }, 500);
+    }
+});
+</script>
