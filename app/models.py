@@ -121,6 +121,24 @@ class Bsrcenter_meds(models.Model):
         return f"{self.bsrcenter.registration} - {self.medicines.medicine_name}"
 
 
-
+class Bsrcenter_Burial(models.Model):
+    tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
+    deceased_name = models.CharField(max_length=255)
+    relationship = models.CharField(max_length=100)
+    date_claimed = models.DateField(auto_now_add=True)
+    date_claim_expiry = models.DateField()
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    death_certificate = models.BooleanField(default=False)
+    cause_of_death = models.TextField (blank=True, null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    def __str__(self):
+        return f"{self.registration} - {self.tracking_number or self.id}"
     
 
