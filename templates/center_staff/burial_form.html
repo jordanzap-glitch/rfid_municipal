@@ -1,0 +1,366 @@
+{% extends "includes/base.html" %}
+{% load static %}
+{% block content %} 
+
+<section class="section">
+    <div class="section-header d-flex justify-content-between align-items-center">
+        <h1>Burial Details</h1>
+        <button type="button" class="btn btn-outline-info" id="showRfidModalBtn">
+            <i class="fas fa-id-card"></i> Enter RFID
+        </button>
+    </div>
+
+    <div class="section-body">
+        
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8 mx-auto">
+                <form id="burialForm" method="post" enctype="multipart/form-data" class="card" action="{% url 'burial_form' %}">
+                    {% csrf_token %}
+                    <div class="card-header">
+                        <h4>Registration Information</h4>
+                    </div>
+                    {% include "includes/message.html" %}
+                    <div class="card-body">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="profile-upload mr-3 text-center">
+                                <div id="profilePreview" class="profile-box">
+                                    <span style="font-size:12px;">No image<br>selected</span>
+                                </div>
+                            </div>
+                            <div class="flex-fill">
+                                <p class="text-muted mb-0">Profile image</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="rfid"></label>
+                                   <input type="hidden" name="rfid" id="rfid" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="mobile_no">Mobile Number</label>
+                                <input type="tel" name="mobile_no" id="mobile_no" class="form-control" maxlength="20" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="last_name">Last name</label>
+                                <input type="text" name="last_name" id="last_name" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="first_name">First name</label>
+                                <input type="text" name="first_name" id="first_name" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="middle_name">Middle name</label>
+                                <input type="text" name="middle_name" id="middle_name" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="name_extension">Name extension</label>
+                                <input type="text" name="name_extension" id="name_extension" class="form-control" maxlength="10" readonly />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="date_of_birth">Date of birth</label>
+                                <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="place_of_birth">Place of birth</label>
+                                <input type="text" name="place_of_birth" id="place_of_birth" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="gender">Gender</label>
+                                <input type="text" name="gender" id="gender" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="civil_status">Civil Status</label>
+                                <input type="text" name="civil_status" id="civil_status" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="occupation">Occupation</label>
+                                <input type="text" name="occupation" id="occupation" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="email">Email</label>
+                                <input type="email" name="email" id="email" class="form-control" maxlength="100" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="province">Province</label>
+                                <input type="text" name="province" id="province" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="municipality">Municipality</label>
+                                <input type="text" name="municipality" id="municipality" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="barangay">Barangay</label>
+                                <input type="text" name="barangay" id="barangay" class="form-control" readonly />
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                        <!-- Previous Assistance Card -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4>Previous Assistance</h4>
+                            </div>
+                            <div class="card-body">
+                                    {% comment %}Show only previous burial assistance for this form.{% endcomment %}
+                                    {% if previous_burial_assistance %}
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <strong>Deceased:</strong> {{ previous_burial_assistance.deceased_name }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Relationship:</strong> {{ previous_burial_assistance.relationship }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Cause:</strong> {{ previous_burial_assistance.cause_of_death }}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-4">
+                                                <strong>Amount:</strong> {{ previous_burial_assistance.amount }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Date Claimed:</strong> {{ previous_burial_assistance.date_claimed }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Date Claim Expiry:</strong> {{ previous_burial_assistance.date_claim_expiry }}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div class="text-muted">No previous burial assistance found.</div>
+                                    {% endif %}
+                                </div>
+                        </div>
+                    <div class="card-header">
+                        <h4>Assistance</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="deceased_name">Deceased Name</label>
+                                <input type="text" name="deceased_name" id="deceased_name" class="form-control" maxlength="100" placeholder="Full name of deceased" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="relationship">Relationship</label>
+                                <input type="text" name="relationship" id="relationship" class="form-control" maxlength="50" placeholder="Relationship to deceased" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="amount">Amount</label>
+                                <input type="number" step="0.01" name="amount" id="amount" class="form-control" min="0" required />
+                            </div>
+                            <div class="form-group col-md-8">
+                                <label for="cause_of_death">Cause of Death</label>
+                                <input type="text" name="cause_of_death" id="cause_of_death" class="form-control" maxlength="150" placeholder="Primary cause of death" />
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="form-group col-md-3">
+                                <div class="form-check">
+                                    <!-- Death certificate checkbox -->
+                                    <input class="form-check-input" type="checkbox" name="death_certificate" id="death_certificate" style="transform: scale(1.25); margin-right: 8px; vertical-align: middle;" />
+                                    <label class="form-check-label" for="death_certificate" style="vertical-align: middle; font-size:1rem;">Death Certificate</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="date_claimed">Date Claimed</label>
+                                <input type="date" name="date_claimed" id="date_claimed" class="form-control" required />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="date_claimed_expiry">Date Claim Expiry</label>
+                                <input type="date" name="date_claimed_expiry" id="date_claimed_expiry" class="form-control" required />
+                            </div>
+                        </div>
+                        <!-- diagnosis / additional notes removed per request -->
+                        <div class="row">
+                            <div class="form-group col-md-12 text-right">
+                                <button type="submit" class="btn btn-outline-primary">Save Assistance</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- RFID Modal (same IDs as med_form to reuse RFID tapping logic) -->
+<div class="modal fade" id="rfidModal" tabindex="-1" role="dialog" aria-labelledby="rfidModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rfidModalLabel">Enter RFID</h5>
+      </div>
+            <div class="modal-body">
+                    <div class="mb-2 text-center text-muted">Tap the RFID to show information</div>
+                    <input type="password" id="rfidInput" class="form-control" placeholder="Scan RFID" autofocus  />
+                <div id="rfidError" class="text-danger mt-2" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+    <button type="button" class="btn btn-primary" id="rfidSubmit" style="display:none;">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Created Modal (shows after saving burial record) - shows burial-specific details -->
+    <div class="modal fade" id="bsrModal" tabindex="-1" role="dialog" aria-labelledby="bsrModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bsrModalLabel">Burial Created</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2"><strong>Tracking Number:</strong> <span id="bsr_tracking">{% if recent_bsr %}{{ recent_bsr.tracking_number }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Deceased:</strong> <span id="bsr_deceased">{% if recent_bsr %}{{ recent_bsr.deceased_name }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Relationship:</strong> <span id="bsr_relationship">{% if recent_bsr %}{{ recent_bsr.relationship }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Cause of Death:</strong> <span id="bsr_cause">{% if recent_bsr %}{{ recent_bsr.cause_of_death }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Death Certificate:</strong> <span id="bsr_death_cert">{% if recent_bsr and recent_bsr.death_certificate %}Yes{% elif recent_bsr %}No{% endif %}</span></div>
+                    <div class="mb-2"><strong>Amount:</strong> <span id="bsr_amount">{% if recent_bsr %}{{ recent_bsr.amount }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Claimed:</strong> <span id="bsr_date_claimed">{% if recent_bsr %}{{ recent_bsr.date_claimed }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Claim Expiry:</strong> <span id="bsr_date_expiry">{% if recent_bsr %}{{ recent_bsr.date_claim_expiry }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Requested By:</strong> <span id="bsr_requested_by">{% if recent_bsr %}{{ recent_bsr.first_name }} {{ recent_bsr.last_name }}{% endif %}</span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="bsrPrintBtn">Print</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+// Minimal JS for the burial form: RFID lookup, recent_bsr modal, and print
+document.addEventListener('DOMContentLoaded', function() {
+    var showBtn = document.getElementById('showRfidModalBtn');
+    if (showBtn) {
+        showBtn.onclick = function() {
+            $('#rfidModal').modal({backdrop: 'static', keyboard: false});
+            $('#rfidModal').modal('show');
+        };
+    }
+
+    var rfidSubmitBtn = document.getElementById('rfidSubmit');
+    if (rfidSubmitBtn) rfidSubmitBtn.onclick = submitRFID;
+
+    var rfidInput = document.getElementById('rfidInput');
+    if (rfidInput) {
+        rfidInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') submitRFID();
+        });
+        $('#rfidModal').on('shown.bs.modal', function () { rfidInput.focus(); });
+    }
+
+    // If server provided a recent_bsr in context, show the modal to allow printing
+    {% if recent_bsr %}
+        $('#bsrModal').modal({backdrop: 'static', keyboard: false});
+        $('#bsrModal').modal('show');
+    {% endif %}
+});
+
+function submitRFID() {
+    var rfidEl = document.getElementById('rfidInput');
+    var rfid = rfidEl ? rfidEl.value.trim() : '';
+    var errorDiv = document.getElementById('rfidError');
+    if (!rfid) {
+        if (errorDiv) { errorDiv.textContent = 'Please enter RFID.'; errorDiv.style.display = 'block'; }
+        return;
+    }
+    if (errorDiv) errorDiv.style.display = 'none';
+
+    fetch('/get/registration_burials/' + encodeURIComponent(rfid) + '/')
+        .then(function(response) {
+            if (!response.ok) throw new Error('Not found');
+            return response.json();
+        })
+        .then(function(data) {
+            // Fill form fields
+            var set = function(id, val){ var el = document.getElementById(id); if (el) el.value = val || ''; };
+            set('rfid', data.rfid);
+            set('mobile_no', data.mobile_no);
+            set('last_name', data.last_name);
+            set('first_name', data.first_name);
+            set('middle_name', data.middle_name);
+            set('name_extension', data.name_extension);
+            set('date_of_birth', data.date_of_birth);
+            set('place_of_birth', data.place_of_birth);
+            set('gender', data.gender);
+            set('civil_status', data.civil_status);
+            set('occupation', data.occupation);
+            set('email', data.email);
+            set('province', data.province_name);
+            set('municipality', data.municipality_name);
+            set('barangay', data.barangay_name);
+
+            // Profile image preview
+            var preview = document.getElementById('profilePreview');
+            if (preview) {
+                if (data.profile_pic_url) {
+                    preview.style.backgroundImage = `url(${data.profile_pic_url})`;
+                    preview.innerHTML = '';
+                } else {
+                    preview.style.backgroundImage = '';
+                    preview.innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
+                }
+            }
+
+            // Show previous burial assistance (if provided by API)
+            var pb = data.previous_burial_assistance || null;
+            var paCard = document.querySelector('.card.mb-4 .card-body');
+            if (paCard) {
+                if (pb) {
+                    paCard.innerHTML = `<div class="row">
+                        <div class="col-md-4"><strong>Deceased:</strong> ${pb.deceased_name || ''}</div>
+                        <div class="col-md-4"><strong>Relationship:</strong> ${pb.relationship || ''}</div>
+                        <div class="col-md-4"><strong>Cause:</strong> ${pb.cause_of_death || ''}</div>
+                        <div class="w-100"></div>
+                        <div class="col-md-4"><strong>Amount:</strong> ${pb.amount || ''}</div>
+                        <div class="col-md-4"><strong>Date Claimed:</strong> ${pb.date_claimed || ''}</div>
+                        <div class="col-md-4"><strong>Date Claim Expiry:</strong> ${pb.date_claim_expiry || ''}</div>
+                    </div>`;
+                } else {
+                    paCard.innerHTML = '<div class="text-muted">No previous burial assistance found.</div>';
+                }
+            }
+
+            // Close modal
+            $('#rfidModal').modal('hide');
+        })
+        .catch(function() {
+            if (errorDiv) { errorDiv.textContent = 'RFID not found.'; errorDiv.style.display = 'block'; }
+        });
+}
+
+// Print modal contents in a new window
+document.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'bsrPrintBtn') {
+        var content = document.querySelector('#bsrModal .modal-body').innerHTML;
+        var w = window.open('', '_blank');
+        w.document.write('<html><head><title>Print Assistance</title>');
+        w.document.write('<link rel="stylesheet" href="/static/css/style.css">');
+        w.document.write('</head><body>');
+        w.document.write('<h3>Assistance Details</h3>');
+        w.document.write(content);
+        w.document.write('</body></html>');
+        w.document.close();
+        w.focus();
+        setTimeout(function(){ w.print(); w.close(); }, 500);
+    }
+});
+</script>
+
+{% endblock %}

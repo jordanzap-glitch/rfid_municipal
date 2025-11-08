@@ -15,6 +15,33 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#rfidModal').on('shown.bs.modal', function () {
             document.getElementById('rfidInput').focus();
         });
+    // Prevent submitting the form when no medicines are selected.
+    var assistanceForm = document.getElementById('assistanceForm');
+    var medicineError = document.getElementById('medicineError');
+    if (assistanceForm) {
+        assistanceForm.addEventListener('submit', function(e){
+            try {
+                var selected = document.getElementById('selectedMedicines').querySelectorAll('input[name="medicines"]');
+                if (!selected || selected.length === 0) {
+                    e.preventDefault();
+                    if (medicineError) {
+                        medicineError.textContent = 'Please choose at least one medicine before saving assistance.';
+                        medicineError.style.display = 'block';
+                    } else {
+                        alert('Please choose at least one medicine before saving assistance.');
+                    }
+                    var ms = document.getElementById('medicineSearch');
+                    if (ms) ms.focus();
+                    return false;
+                } else if (medicineError) {
+                    medicineError.style.display = 'none';
+                }
+            } catch (ex) {
+                // if anything unexpected happens, allow submit so server-side validation can handle it
+                console.error('medicine validation error', ex);
+            }
+        });
+    }
 });
 
 function submitRFID() {
@@ -149,6 +176,9 @@ function setupMedicineSearch() {
         badge.appendChild(removeBtn);
         selectedContainer.appendChild(badge);
         selectedContainer.appendChild(hiddenInput);
+        // hide medicine error if present
+        var medErr = document.getElementById('medicineError');
+        if (medErr) medErr.style.display = 'none';
     }
 
     function selectItem(item) {
@@ -169,16 +199,25 @@ function setupMedicineSearch() {
 
     function update() {
         var q = input.value.trim().toLowerCase();
+        var filtered = [];
         if (!q) {
-            suggestions.style.display = 'none';
-            return;
+            // when query is empty, show the top medicines (preserve search behavior)
+            filtered = medicinesList.filter(function(m) {
+                if (isSelected(m.id)) return false; // exclude already selected
+                return true;
+            }).slice(0, 20);
+        } else {
+            filtered = medicinesList.filter(function(m) {
+                if (isSelected(m.id)) return false; // exclude already selected
+                return m.name.toLowerCase().indexOf(q) !== -1;
+            }).slice(0, 20);
         }
-        var filtered = medicinesList.filter(function(m) {
-            if (isSelected(m.id)) return false; // exclude already selected
-            return m.name.toLowerCase().indexOf(q) !== -1;
-        }).slice(0, 20);
         render(filtered);
     }
+
+    // show suggestions when input is focused/clicked even if empty
+    input.addEventListener('focus', function() { update(); });
+    input.addEventListener('click', function(e) { update(); });
 
     input.addEventListener('input', function() {
         // keep selected items in selectedContainer; clear search

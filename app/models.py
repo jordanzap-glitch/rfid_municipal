@@ -53,6 +53,12 @@ class Barangay(models.Model):
         return self.barangay_name
     
  
+class Status(models.Model):
+    status_name = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.status_name
+
 class Registration(models.Model):
     rfid = models.CharField(max_length=50, unique=True)
 

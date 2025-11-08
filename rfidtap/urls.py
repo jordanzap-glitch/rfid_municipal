@@ -52,5 +52,7 @@ urlpatterns = [
     #center staff
     path('centerstaff/home', centerstaff_views.home, name='centerstaff_home'),
     path('centerstaff/med_form', centerstaff_views.MED_FORM, name='med_form'),
+    path('centerstaff/burial_form', centerstaff_views.BURIAL_FORM, name='burial_form'),
+    path('get/registration_burials/<str:rfid>/', centerstaff_views.GET_REGISTRATION_BURIALS, name='get_registration_burials'),
     path('get/registration/<str:rfid>/', centerstaff_views.GET_REGISTRATION, name='get_registration'),
 ]+ static(settings.MEDIA_URL,document_root = settings.MEDIA_ROOT)
