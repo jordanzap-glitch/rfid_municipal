@@ -10,6 +10,8 @@ class CustomUser(AbstractUser):
         ('3',  'municipaladmin'),
         ('4', 'admincenter'),
         ('5', 'centerstaff'),
+        ('6', 'adminpeso'),
+        ('7', 'pesostaff'),
     )
     user_type = models.CharField(choices=USER, max_length=25)
     profile_pic = models.ImageField(upload_to='profile_pic/')
@@ -104,12 +106,7 @@ class Bsrcenter(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date_claimed = models.DateField(auto_now_add=True)
     date_claim_expiry = models.DateField()
-    STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-    )
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    status=models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
     barangay_indigency = models.BooleanField(default=False)
     barangay_recidency = models.BooleanField(default=False)
     diagnosis = models.TextField (blank=True, null=True)
@@ -134,12 +131,7 @@ class Bsrcenter_Burial(models.Model):
     relationship = models.CharField(max_length=100)
     date_claimed = models.DateField(auto_now_add=True)
     date_claim_expiry = models.DateField()
-    STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-    )
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
     death_certificate = models.BooleanField(default=False)
     cause_of_death = models.TextField (blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)

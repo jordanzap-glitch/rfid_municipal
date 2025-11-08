@@ -54,7 +54,7 @@ def MED_FORM(request):
         # if the previous assistance has expired or is not approved.
         active_bsr_exists = Bsrcenter.objects.filter(
             registration=registration,
-            status='approved',
+            status_id=2,
             date_claim_expiry__gte=today
         ).exists()
         if active_bsr_exists:
@@ -96,7 +96,7 @@ def MED_FORM(request):
             existing = Bsrcenter_meds.objects.filter(
                 medicines=medicine,
                 bsrcenter__registration=registration,
-                bsrcenter__status='approved',
+                bsrcenter__status_id=2,
                 bsrcenter__date_claim_expiry__gte=today
             ).exists()
             if existing:
@@ -135,7 +135,7 @@ def MED_FORM(request):
                     tracking_number=tracking,
                     # date_claimed is auto_now_add on the model; we only set expiry
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
-                    status='pending',
+                    status_id=1,
                     barangay_indigency=barangay_indigency,
                     barangay_recidency=barangay_recidency,
                     diagnosis=diagnosis or ''
@@ -221,7 +221,7 @@ def BURIAL_FORM(request):
         # if the previous burial has expired or is not approved.
         active_exists = Bsrcenter_Burial.objects.filter(
             registration=registration,
-            status='approved',
+            status_id=2,
             date_claim_expiry__gte=today
         ).exists()
         if active_exists:
@@ -264,7 +264,7 @@ def BURIAL_FORM(request):
                     relationship=relationship or '',
                     tracking_number=tracking,
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
-                    status='pending',
+                    status_id=1,
                     death_certificate=death_certificate,
                     cause_of_death=cause_of_death or '',
                     amount=amount_val,
