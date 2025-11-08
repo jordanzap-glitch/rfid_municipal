@@ -44,6 +44,9 @@ def REGISTRATION_MEMBER(request):
         civil_status = request.POST.get('civil_status')
         occupation = request.POST.get('occupation')
         email = request.POST.get('email')
+        # new fields
+        age = request.POST.get('age')
+        zone_street = request.POST.get('zone_street')
         
         if RfidAuth.objects.filter(rfid=rfid, status='invalid', in_use=True).exists():
             messages.error(request, 'RFID is already in use or invalid.')
@@ -54,6 +57,12 @@ def REGISTRATION_MEMBER(request):
             return redirect('sysadmin_register')
         else:
             try:
+                # Normalize age to integer
+                try:
+                    age_val = int(age) if age not in (None, '') else 0
+                except (ValueError, TypeError):
+                    age_val = 0
+
                 registration = Registration(
                     rfid=rfid,
                     last_name=last_name,
@@ -70,7 +79,9 @@ def REGISTRATION_MEMBER(request):
                     civil_status=civil_status,
                     occupation=occupation,
                     email=email,
-                    place_of_birth=place_of_birth
+                    place_of_birth=place_of_birth,
+                    age=age_val,
+                    zone_street=zone_street
                 )
                 registration.save()
                 # Update RfidAuth status and in_use

@@ -84,6 +84,8 @@ class Registration(models.Model):
 
     date_added = models.DateTimeField(auto_now_add=True)
     profile_pic = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    age = models.IntegerField(default=0)
+    zone_street = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return f"{self.last_name}, {self.first_name} {self.middle_name or ''}".strip()
@@ -110,7 +112,7 @@ class Bsrcenter(models.Model):
     barangay_indigency = models.BooleanField(default=False)
     barangay_recidency = models.BooleanField(default=False)
     diagnosis = models.TextField (blank=True, null=True)
-    released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+    processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
     
     def __str__(self):
         # Bsrcenter no longer stores a direct medicines FK on the model;
@@ -136,9 +138,25 @@ class Bsrcenter_Burial(models.Model):
     death_certificate = models.BooleanField(default=False)
     cause_of_death = models.TextField (blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+    processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
      
     def __str__(self):
         return f"{self.registration} - {self.tracking_number or self.id}"
-    
+
+class Peso_reap(models.Model):
+    tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
+    biodata = models.BooleanField(default=False)
+    certificate_of_reg = models.BooleanField(default=False)
+    certificate_of_grades = models.BooleanField(default=False)
+    barangay_indigency = models.BooleanField(default=False)
+    barangay_recidency = models.BooleanField(default=False)
+    official_receipt = models.BooleanField(default=False)
+    processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+    date_added = models.DateField(auto_now_add=True, blank=True, null=True)
+    is_released = models.BooleanField(default=False)
+    status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
+    def __str__(self):
+        return f"{self.registration} - {self.tracking_number or self.id}"
+
 

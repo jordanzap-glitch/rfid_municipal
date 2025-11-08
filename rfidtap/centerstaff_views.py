@@ -139,7 +139,7 @@ def MED_FORM(request):
                     # date_claimed is auto_now_add on the model; we only set expiry
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
                     status_id=1,
-                    released_by_id=request.user.id if request.user and request.user.is_authenticated else None,
+                    processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
                     barangay_indigency=barangay_indigency,
                     barangay_recidency=barangay_recidency,
                     diagnosis=diagnosis or ''
@@ -267,7 +267,7 @@ def BURIAL_FORM(request):
                     tracking_number=tracking,
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
                     status_id=1,
-                    released_by_id=request.user.id if request.user and request.user.is_authenticated else None,
+                    processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
                     death_certificate=death_certificate,
                     cause_of_death=cause_of_death or '',
                     amount=amount_val,
@@ -315,6 +315,7 @@ def GET_REGISTRATION(request, rfid):
             'name_extension': reg.name_extension,
             'date_of_birth': reg.date_of_birth.strftime('%Y-%m-%d') if reg.date_of_birth else '',
             'place_of_birth': reg.place_of_birth,
+            'age': reg.age,
             'province_name': reg.province.province_name if reg.province else '',
             'municipality_name': reg.municipality.municipality_name if reg.municipality else '',
             'barangay_name': reg.barangay.barangay_name if reg.barangay else '',
@@ -324,6 +325,7 @@ def GET_REGISTRATION(request, rfid):
             'occupation': reg.occupation,
             'email': reg.email,
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
+            'zone_street': reg.zone_street or '',
         }
         # Get latest previous assistance for this registration
         prev = Bsrcenter.objects.filter(registration=reg).order_by('-id').first()
@@ -363,6 +365,7 @@ def GET_REGISTRATION_BURIALS(request, rfid):
             'name_extension': reg.name_extension,
             'date_of_birth': reg.date_of_birth.strftime('%Y-%m-%d') if reg.date_of_birth else '',
             'place_of_birth': reg.place_of_birth,
+            'age': reg.age,
             'province_name': reg.province.province_name if reg.province else '',
             'municipality_name': reg.municipality.municipality_name if reg.municipality else '',
             'barangay_name': reg.barangay.barangay_name if reg.barangay else '',
@@ -372,6 +375,7 @@ def GET_REGISTRATION_BURIALS(request, rfid):
             'occupation': reg.occupation,
             'email': reg.email,
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
+            'zone_street': reg.zone_street or '',
         }
 
         prev = Bsrcenter_Burial.objects.filter(registration=reg).order_by('-id').first()

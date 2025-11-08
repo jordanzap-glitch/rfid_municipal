@@ -77,7 +77,11 @@
                                 <label for="date_of_birth">Date of birth</label>
                                 <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" required />
                             </div>
-                            <div class="form-group col-md-6">
+                            <div class="form-group col-md-2">
+                                <label for="age">Age</label>
+                                <input type="number" name="age" id="age" class="form-control" min="0" max="150" step="1" placeholder="Auto-calculated" aria-label="Age" />
+                            </div>
+                            <div class="form-group col-md-4">
                                 <label for="place_of_birth">Place of birth</label>
                                 <input type="text" name="place_of_birth" id="place_of_birth" class="form-control" required />
                             </div>
@@ -113,6 +117,10 @@
                             <div class="form-group col-md-6">
                                 <label for="email">Email</label>
                                 <input type="email" name="email" id="email" class="form-control" maxlength="100" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="zone_street">Zone / Street</label>
+                                <input type="text" name="zone_street" id="zone_street" class="form-control" maxlength="200" placeholder="Zone / Street" />
                             </div>
                         </div>
                         <div class="row">
@@ -155,21 +163,54 @@
 
 <script>
 // Preview selected profile image in the circular preview
+// and automatically calculate age from date of birth
 document.addEventListener('DOMContentLoaded', function(){
-    const input = document.getElementById('profile_pic');
-    const preview = document.getElementById('profilePreview');
-    if(!input || !preview) return;
-    input.addEventListener('change', function(e){
-        const file = e.target.files && e.target.files[0];
-        if(!file) {
-            preview.style.backgroundImage = '';
-            preview.innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
-            return;
+    // Image preview
+    (function(){
+        const input = document.getElementById('profile_pic');
+        const preview = document.getElementById('profilePreview');
+        if(!input || !preview) return;
+        input.addEventListener('change', function(e){
+            const file = e.target.files && e.target.files[0];
+            if(!file) {
+                preview.style.backgroundImage = '';
+                preview.innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
+                return;
+            }
+            const url = URL.createObjectURL(file);
+            preview.style.backgroundImage = `url(${url})`;
+            preview.innerHTML = '';
+        });
+    })();
+
+    // Age calculation
+    (function(){
+        const dobInput = document.getElementById('date_of_birth');
+        const ageInput = document.getElementById('age');
+        if(!dobInput || !ageInput) return;
+
+        function calculateAge(dobString){
+            if(!dobString) return '';
+            const dob = new Date(dobString);
+            if (isNaN(dob)) return '';
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())){
+                age--;
+            }
+            return age >= 0 ? age : '';
         }
-        const url = URL.createObjectURL(file);
-        preview.style.backgroundImage = `url(${url})`;
-        preview.innerHTML = '';
-    });
+
+        function updateAge(){
+            const age = calculateAge(dobInput.value);
+            ageInput.value = (age === '') ? '' : age;
+        }
+
+        dobInput.addEventListener('change', updateAge);
+        dobInput.addEventListener('input', updateAge);
+        updateAge();
+    })();
 });
 </script>
 

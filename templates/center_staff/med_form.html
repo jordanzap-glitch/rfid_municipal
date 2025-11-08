@@ -65,7 +65,11 @@
                                 <label for="date_of_birth">Date of birth</label>
                                 <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" readonly />
                             </div>
-                            <div class="form-group col-md-6">
+                            <div class="form-group col-md-2">
+                                <label for="reg_age">Age</label>
+                                <input type="text" name="reg_age" id="reg_age" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
                                 <label for="place_of_birth">Place of birth</label>
                                 <input type="text" name="place_of_birth" id="place_of_birth" class="form-control" readonly />
                             </div>
@@ -88,6 +92,10 @@
                             <div class="form-group col-md-6">
                                 <label for="email">Email</label>
                                 <input type="email" name="email" id="email" class="form-control" maxlength="100" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="zone_street">Zone / Street</label>
+                                <input type="text" name="zone_street" id="zone_street" class="form-control" maxlength="200" readonly />
                             </div>
                         </div>
                         <div class="row">
@@ -326,6 +334,11 @@ function submitRFID() {
             document.getElementById('name_extension').value = data.name_extension || '';
             document.getElementById('date_of_birth').value = data.date_of_birth || '';
             document.getElementById('place_of_birth').value = data.place_of_birth || '';
+            // populate registration age (readonly) as well as assistance age
+            if (typeof data.age !== 'undefined') {
+                var regAge = document.getElementById('reg_age');
+                if (regAge) regAge.value = data.age || '';
+            }
             document.getElementById('gender').value = data.gender || '';
             document.getElementById('civil_status').value = data.civil_status || '';
             document.getElementById('occupation').value = data.occupation || '';
@@ -333,6 +346,15 @@ function submitRFID() {
             document.getElementById('province').value = data.province_name || '';
             document.getElementById('municipality').value = data.municipality_name || '';
             document.getElementById('barangay').value = data.barangay_name || '';
+            // populate age (assistance input) and zone/street (registration info)
+            if (typeof data.age !== 'undefined') {
+                var assistanceAge = document.getElementById('age');
+                if (assistanceAge) assistanceAge.value = data.age || '';
+            }
+            if (typeof data.zone_street !== 'undefined') {
+                var zs = document.getElementById('zone_street');
+                if (zs) zs.value = data.zone_street || '';
+            }
             // Profile image preview
             if (data.profile_pic_url) {
                 document.getElementById('profilePreview').style.backgroundImage = `url(${data.profile_pic_url})`;

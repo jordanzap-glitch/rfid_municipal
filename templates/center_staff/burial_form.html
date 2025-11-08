@@ -64,7 +64,11 @@
                                 <label for="date_of_birth">Date of birth</label>
                                 <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" readonly />
                             </div>
-                            <div class="form-group col-md-6">
+                            <div class="form-group col-md-2">
+                                <label for="age">Age</label>
+                                <input type="text" name="age" id="age" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
                                 <label for="place_of_birth">Place of birth</label>
                                 <input type="text" name="place_of_birth" id="place_of_birth" class="form-control" readonly />
                             </div>
@@ -87,6 +91,10 @@
                             <div class="form-group col-md-6">
                                 <label for="email">Email</label>
                                 <input type="email" name="email" id="email" class="form-control" maxlength="100" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="zone_street">Zone / Street</label>
+                                <input type="text" name="zone_street" id="zone_street" class="form-control" maxlength="200" readonly />
                             </div>
                         </div>
                         <div class="row">
@@ -287,7 +295,7 @@ function submitRFID() {
             if (!response.ok) throw new Error('Not found');
             return response.json();
         })
-        .then(function(data) {
+            .then(function(data) {
             // Fill form fields
             var set = function(id, val){ var el = document.getElementById(id); if (el) el.value = val || ''; };
             set('rfid', data.rfid);
@@ -298,6 +306,15 @@ function submitRFID() {
             set('name_extension', data.name_extension);
             set('date_of_birth', data.date_of_birth);
             set('place_of_birth', data.place_of_birth);
+            // populate registration age and zone/street if provided
+            if (typeof data.age !== 'undefined') {
+                var regAge = document.getElementById('age');
+                if (regAge) regAge.value = data.age || '';
+            }
+            if (typeof data.zone_street !== 'undefined') {
+                var zs = document.getElementById('zone_street');
+                if (zs) zs.value = data.zone_street || '';
+            }
             set('gender', data.gender);
             set('civil_status', data.civil_status);
             set('occupation', data.occupation);
