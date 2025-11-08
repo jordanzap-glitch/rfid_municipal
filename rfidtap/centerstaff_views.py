@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial
 from django.views.decorators.csrf import csrf_exempt
 from datetime import date, datetime as _dt
@@ -52,11 +53,12 @@ def MED_FORM(request):
         # Prevent creating a new medicine assistance when there is an approved,
         # still-active assistance (date_claim_expiry >= today). Allow creation
         # if the previous assistance has expired or is not approved.
+        # Block creation if there is any pending(1) or approved(2) assistance
+        # that either has no expiry set or hasn't expired yet.
         active_bsr_exists = Bsrcenter.objects.filter(
             registration=registration,
-            status_id=2,
-            date_claim_expiry__gte=today
-        ).exists()
+            status_id__in=[1, 2],
+        ).filter(Q(date_claim_expiry__isnull=True) | Q(date_claim_expiry__gte=today)).exists()
         if active_bsr_exists:
             messages.error(request, 'Cannot save assistance: there is an approved assistance that has not yet expired.')
             return render(request, 'center_staff/med_form.html', context)
@@ -93,12 +95,14 @@ def MED_FORM(request):
                 continue
 
             # Prevent duplicate assistance if not expired and approved
+            # Prevent duplicate assistance for the same medicine when there is any
+            # pending(1) or approved(2) bsrcenter for this registration that
+            # either has no expiry set or hasn't expired yet.
             existing = Bsrcenter_meds.objects.filter(
                 medicines=medicine,
                 bsrcenter__registration=registration,
-                bsrcenter__status_id=2,
-                bsrcenter__date_claim_expiry__gte=today
-            ).exists()
+                bsrcenter__status_id__in=[1, 2],
+            ).filter(Q(bsrcenter__date_claim_expiry__isnull=True) | Q(bsrcenter__date_claim_expiry__gte=today)).exists()
             if existing:
                 errors.append(f'Cannot save assistance for "{medicine.medicine_name}": previous approved assistance is still active.')
                 continue
@@ -135,6 +139,7 @@ def MED_FORM(request):
                     # date_claimed is auto_now_add on the model; we only set expiry
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
                     status_id=1,
+                    released_by_id=request.user.id if request.user and request.user.is_authenticated else None,
                     barangay_indigency=barangay_indigency,
                     barangay_recidency=barangay_recidency,
                     diagnosis=diagnosis or ''
@@ -217,11 +222,12 @@ def BURIAL_FORM(request):
         # Prevent creating a new burial assistance when there is an approved,
         # still-active burial (date_claim_expiry >= today). Allow creation
         # if the previous burial has expired or is not approved.
+        # Block creation if there is any pending(1) or approved(2) burial
+        # that either has no expiry set or hasn't expired yet.
         active_exists = Bsrcenter_Burial.objects.filter(
             registration=registration,
-            status_id=2,
-            date_claim_expiry__gte=today
-        ).exists()
+            status_id__in=[1, 2],
+        ).filter(Q(date_claim_expiry__isnull=True) | Q(date_claim_expiry__gte=today)).exists()
         if active_exists:
             messages.error(request, 'Cannot save burial assistance: there is an approved burial assistance that has not yet expired.')
             return render(request, 'center_staff/burial_form.html', context)
@@ -261,6 +267,7 @@ def BURIAL_FORM(request):
                     tracking_number=tracking,
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
                     status_id=1,
+                    released_by_id=request.user.id if request.user and request.user.is_authenticated else None,
                     death_certificate=death_certificate,
                     cause_of_death=cause_of_death or '',
                     amount=amount_val,

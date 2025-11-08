@@ -110,6 +110,7 @@ class Bsrcenter(models.Model):
     barangay_indigency = models.BooleanField(default=False)
     barangay_recidency = models.BooleanField(default=False)
     diagnosis = models.TextField (blank=True, null=True)
+    released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
     
     def __str__(self):
         # Bsrcenter no longer stores a direct medicines FK on the model;
@@ -135,7 +136,8 @@ class Bsrcenter_Burial(models.Model):
     death_certificate = models.BooleanField(default=False)
     cause_of_death = models.TextField (blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    
+    released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+     
     def __str__(self):
         return f"{self.registration} - {self.tracking_number or self.id}"
     
