@@ -6,15 +6,13 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Bsrcenter, Medicines
 
 
 def home(request):
     return render(request,'center_admin/home.html')
 
 def APPROVAL_TABLE(request):
-    from app.models import Bsrcenter, Registration
-
     # Handle approval POST: accept registration_id and approve all Bsrcenter entries for that registration
     if request.method == 'POST':
         registration_id = request.POST.get('registration_id') or request.POST.get('id')
@@ -126,7 +124,6 @@ def APPROVAL_TABLE(request):
 # AJAX endpoint to get Bsrcenter info by id for modal
 @require_GET
 def GET_BSR_CENTER_INFO(request):
-    from app.models import Bsrcenter, Registration
     registration_id = request.GET.get('registration_id') or request.GET.get('id')
     if not registration_id:
         return JsonResponse({'error': 'Missing registration_id'}, status=400)

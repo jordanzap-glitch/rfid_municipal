@@ -5,9 +5,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial
 from django.views.decorators.csrf import csrf_exempt
+from datetime import date, datetime as _dt
+from decimal import Decimal, InvalidOperation
 
 def home(request):
     return render(request,'center_staff/home.html')
@@ -45,8 +47,6 @@ def MED_FORM(request):
             messages.error(request, 'No medicine selected.')
             return render(request, 'center_staff/med_form.html', context)
 
-        from datetime import date
-        from decimal import Decimal, InvalidOperation
         today = date.today()
 
         # Prevent creating a new medicine assistance when there is an approved,
@@ -75,7 +75,7 @@ def MED_FORM(request):
             amount_val = Decimal('0.00')
 
         # Convert date_claim_expiry to date object if provided
-        from datetime import datetime as _dt
+        
         expiry_date_obj = None
         if date_claim_expiry:
             try:
@@ -112,7 +112,6 @@ def MED_FORM(request):
             return render(request, 'center_staff/med_form.html', context)
 
         # Create a single Bsrcenter record and link all valid medicines to it
-        from django.db import transaction
         bsr = None
         recent_bsr = None
         try:
@@ -212,8 +211,7 @@ def BURIAL_FORM(request):
             messages.error(request, 'Registration not found for RFID.')
             return render(request, 'center_staff/burial_form.html', context)
 
-        from datetime import date
-        from decimal import Decimal, InvalidOperation
+
         today = date.today()
 
         # Prevent creating a new burial assistance when there is an approved,
@@ -235,7 +233,6 @@ def BURIAL_FORM(request):
             amount_val = Decimal('0.00')
 
         # Convert date_claim_expiry to date object if provided
-        from datetime import datetime as _dt
         expiry_date_obj = None
         if date_claim_expiry:
             try:
@@ -244,7 +241,6 @@ def BURIAL_FORM(request):
                 expiry_date_obj = None
 
         # Create burial record
-        from django.db import transaction, IntegrityError
         burial = None
         recent_bsr = None
         try:

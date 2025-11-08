@@ -19,7 +19,8 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 
-from .import sysadmin_views, views, munadmin_views, centeradmin_views, centerstaff_views
+from .import sysadmin_views, views, munadmin_views, centeradmin_views, centerstaff_views, pesostaff_views, pesoadmin_views
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -55,4 +56,11 @@ urlpatterns = [
     path('centerstaff/burial_form', centerstaff_views.BURIAL_FORM, name='burial_form'),
     path('get/registration_burials/<str:rfid>/', centerstaff_views.GET_REGISTRATION_BURIALS, name='get_registration_burials'),
     path('get/registration/<str:rfid>/', centerstaff_views.GET_REGISTRATION, name='get_registration'),
+    
+    
+    #peso admin
+    path('adminpeso/home', pesoadmin_views.home, name='adminpeso_home'),
+    
+    #peso staff
+    path('pesostaff/home', pesostaff_views.home, name='pesostaff_home'),
 ]+ static(settings.MEDIA_URL,document_root = settings.MEDIA_ROOT)

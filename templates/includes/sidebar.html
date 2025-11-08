@@ -75,10 +75,34 @@
                   <li class="dropdown">
                     <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Applications</span></a>
                     <ul class="dropdown-menu">
-                      <li><a class="nav-link" href="{% url 'med_form' %}">Med form</a></li>
-                      <li><a class="nav-link" href="{% url 'burial_form' %}">Burial form</a></li>
+                      <li><a class="nav-link" href="{% url 'med_form' %}">Med Form</a></li>
+                      <li><a class="nav-link" href="{% url 'burial_form' %}">Burial Form</a></li>
                     </ul>
                 </li>
+              {% elif request.user.user_type == '6' %}
+                <!-- Peso Admin Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'adminpeso_home' %}">Peso Admin Dashboard</a></li>
+                  </ul>
+                </li>
+              {% elif request.user.user_type == '7' %}
+                <!-- Peso Staff Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'pesostaff_home' %}">Peso Staff Dashboard</a></li>
+                  </ul>
+                </li>
+                <li class="menu-header">Actions</li>
+                  <li class="dropdown">
+                    <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Applications</span></a>
+                    <ul class="dropdown-menu">
+                      <li><a class="nav-link" href="{% url 'med_form' %}">REAP Form</a></li>
+                      <li><a class="nav-link" href="{% url 'burial_form' %}">Burial Form</a></li>
+                    </ul>
+                  </li>
               {% else %}
                 <!-- Default Sidebar for unknown user_type -->
                 <li><a class="nav-link" href="blank.html"><i class="far fa-square"></i> <span>Blank Page</span></a></li>

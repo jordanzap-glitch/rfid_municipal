@@ -53,6 +53,10 @@ def doLogin(request):
                 return redirect('admincenter_home')
             elif user_type == '5':
                 return redirect('centerstaff_home')
+            elif user_type == '6':
+                return redirect('adminpeso_home')
+            elif user_type == '7':
+                return redirect('pesostaff_home')
             else:
                 messages.error(request, 'Invalid user type.')
                 return redirect('login')
