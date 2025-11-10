@@ -115,9 +115,12 @@ class Bsrcenter(models.Model):
     processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
     
     def __str__(self):
-        # Bsrcenter no longer stores a direct medicines FK on the model;
-        # show registration and tracking number (or id) for readability.
-        return f"{self.registration} - {self.tracking_number or self.id}"
+        parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
+        if self.processed_by:
+            # safe access to processed_by name
+            p_name = f"{self.processed_by.first_name} {self.processed_by.last_name}".strip()
+            parts.append(f"processed by {p_name}")
+        return ' - '.join(parts)
 
 class Bsrcenter_meds(models.Model):
     bsrcenter = models.ForeignKey(Bsrcenter, on_delete=models.CASCADE)
@@ -141,7 +144,12 @@ class Bsrcenter_Burial(models.Model):
     processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
      
     def __str__(self):
-        return f"{self.registration} - {self.tracking_number or self.id}"
+        parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
+        if self.processed_by:
+            # safe access to processed_by name
+            p_name = f"{self.processed_by.first_name} {self.processed_by.last_name}".strip()
+            parts.append(f"processed by {p_name}")
+        return ' - '.join(parts)
 
 class Peso_reap(models.Model):
     tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
@@ -160,7 +168,12 @@ class Peso_reap(models.Model):
     date_claim_expiry = models.DateField(blank=True, null=True)
     
     def __str__(self):
-        return f"{self.registration} - {self.tracking_number or self.id}"
+        parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
+        if self.processed_by:
+            # safe access to processed_by name
+            p_name = f"{self.processed_by.first_name} {self.processed_by.last_name}".strip()
+            parts.append(f"processed by {p_name}")
+        return ' - '.join(parts)
 
 class Skills_training(models.Model):
     Skills_name = models.CharField(max_length=255)
@@ -180,4 +193,9 @@ class Peso_tupad(models.Model):
     status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
     
     def __str__(self):
-        return f"{self.registration} - {self.tracking_number or self.id}"
+        parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
+        if self.processed_by:
+            # safe access to processed_by name
+            p_name = f"{self.processed_by.first_name} {self.processed_by.last_name}".strip()
+            parts.append(f"processed by {p_name}")
+        return ' - '.join(parts)
