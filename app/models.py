@@ -156,7 +156,28 @@ class Peso_reap(models.Model):
     date_added = models.DateField(auto_now_add=True, blank=True, null=True)
     is_released = models.BooleanField(default=False)
     status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
+    date_claimed = models.DateField(auto_now_add=True, blank=True, null=True)
+    date_claim_expiry = models.DateField(blank=True, null=True)
+    
     def __str__(self):
         return f"{self.registration} - {self.tracking_number or self.id}"
 
+class Skills_training(models.Model):
+    Skills_name = models.CharField(max_length=255)
+    
+    def __str__(self):
+        return f"{self.Skills_name}"
 
+class Peso_tupad(models.Model):
+    tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
+    date_claimed = models.DateField(auto_now_add=True)
+    date_claim_expiry = models.DateField()
+    name_of_beneficiary = models.CharField(max_length=255)
+    skills_training = models.ForeignKey(Skills_training, on_delete=models.CASCADE)
+    processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+    is_released = models.BooleanField(default=False)
+    status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
+    
+    def __str__(self):
+        return f"{self.registration} - {self.tracking_number or self.id}"

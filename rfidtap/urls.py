@@ -64,5 +64,7 @@ urlpatterns = [
     #peso staff
     path('pesostaff/home', pesostaff_views.home, name='pesostaff_home'),
     path('pesostaff/reap_form', pesostaff_views.REAP_FORM, name='reap_form'),
+    path('pesostaff/tupad_form', pesostaff_views.TUPAD_FORM, name='tupad_form'),
     path('get/registration_reap/<str:rfid>/', pesostaff_views.GET_REGISTRATION_REAP, name='get_registration_reap'),
+    path('get/registration_tupad/<str:rfid>/', pesostaff_views.GET_REGISTRATION_TUPAD, name='get_registration_tupad'),
 ]+ static(settings.MEDIA_URL,document_root = settings.MEDIA_ROOT)

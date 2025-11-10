@@ -76,8 +76,14 @@ def MED_FORM(request):
         except (InvalidOperation, TypeError):
             amount_val = Decimal('0.00')
 
-        # Convert date_claim_expiry to date object if provided
-        
+        # Convert date_claimed to date object if provided
+        date_claimed_obj = None
+        if date_claimed:
+                    try:
+                        date_claimed_obj = _dt.strptime(date_claimed, '%Y-%m-%d').date()
+                    except Exception:
+                        date_claimed_obj = None
+
         expiry_date_obj = None
         if date_claim_expiry:
             try:
@@ -137,6 +143,7 @@ def MED_FORM(request):
                     amount=amount_val,
                     tracking_number=tracking,
                     # date_claimed is auto_now_add on the model; we only set expiry
+                    date_claimed=date_claimed_obj if date_claimed_obj else None,
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
                     status_id=1,
                     processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
@@ -239,6 +246,13 @@ def BURIAL_FORM(request):
             amount_val = Decimal('0.00')
 
         # Convert date_claim_expiry to date object if provided
+        date_claimed_obj = None
+        if date_claimed:
+            try:
+                date_claimed_obj = _dt.strptime(date_claimed, '%Y-%m-%d').date()
+            except Exception:
+                date_claimed_obj = None
+                
         expiry_date_obj = None
         if date_claim_expiry:
             try:
@@ -265,6 +279,7 @@ def BURIAL_FORM(request):
                     deceased_name=deceased_name or '',
                     relationship=relationship or '',
                     tracking_number=tracking,
+                    date_claimed=date_claimed_obj if date_claimed_obj else None,
                     date_claim_expiry=expiry_date_obj or date_claim_expiry,
                     status_id=1,
                     processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
@@ -334,6 +349,7 @@ def GET_REGISTRATION(request, rfid):
             meds_qs = Bsrcenter_meds.objects.filter(bsrcenter=prev).select_related('medicines')
             med_names = ', '.join([m.medicines.medicine_name for m in meds_qs]) if meds_qs.exists() else ''
             data['previous_assistance'] = {
+                'tracking_number': prev.tracking_number if getattr(prev, 'tracking_number', None) else '',
                 'amount': str(prev.amount) if prev.amount is not None else '',
                 'medicine_name': med_names,
                 'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if prev.date_claimed else '',
@@ -381,6 +397,7 @@ def GET_REGISTRATION_BURIALS(request, rfid):
         prev = Bsrcenter_Burial.objects.filter(registration=reg).order_by('-id').first()
         if prev:
             data['previous_burial_assistance'] = {
+                'tracking_number': prev.tracking_number if getattr(prev, 'tracking_number', None) else '',
                 'deceased_name': prev.deceased_name,
                 'cause_of_death': prev.cause_of_death or '',
                 'relationship': prev.relationship or '',

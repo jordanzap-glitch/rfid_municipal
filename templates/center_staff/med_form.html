@@ -369,7 +369,8 @@ function submitRFID() {
             var paCard = document.querySelector('.card.mb-4 .card-body');
             if (paCard) {
                 if (pa) {
-                    paCard.innerHTML = `<div class="row">
+                    paCard.innerHTML = `<div class="mb-2"><strong>Tracking Number:</strong> ${pa.tracking_number || ''}</div>
+                    <div class="row">
                         <div class="col-md-3"><strong>Amount:</strong> ${pa.amount || ''}</div>
                         <div class="col-md-3"><strong>Medicine:</strong> ${pa.medicine_name || ''}</div>
                         <div class="col-md-3"><strong>Date Claimed:</strong> ${pa.date_claimed || ''}</div>

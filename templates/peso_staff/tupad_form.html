@@ -15,7 +15,7 @@
         
         <div class="row justify-content-center">
             <div class="col-12 col-md-10 col-lg-8 mx-auto">
-                <form id="assistanceForm" method="post" enctype="multipart/form-data" class="card" action="{% url 'reap_form' %}">
+                <form id="assistanceForm" method="post" enctype="multipart/form-data" class="card" action="{% url 'tupad_form' %}">
                     {% csrf_token %}
                     <div class="card-header">
                         <h4>Registration Information</h4>
@@ -120,6 +120,9 @@
                                 <h4>Previous Assistance</h4>
                             </div>
                             <div class="card-body">
+                                <!-- two-column placeholder layout; JS will replace contents when RFID is looked up -->
+                                <div class="row">
+                                </div>
                             </div>
                         </div>
                     <div class="card-header">
@@ -127,45 +130,32 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="form-group col-md-6">
-                                <label>Documents Submitted</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="biodata" id="biodata" style="transform: scale(1.45); margin-right: 10px;" required />
-                                    <label class="form-check-label" for="biodata" style="vertical-align: middle; font-size:1.15rem;">Biodata</label>
-                                </div>
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="cert_registration" id="cert_registration" style="transform: scale(1.45); margin-right: 10px;" required />
-                                    <label class="form-check-label" for="cert_registration" style="vertical-align: middle; font-size:1.15rem;">Certificate of Registration</label>
-                                </div>
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="cert_grades" id="cert_grades" style="transform: scale(1.45); margin-right: 10px;" required />
-                                    <label class="form-check-label" for="cert_grades" style="vertical-align: middle; font-size:1.15rem;">Certificate of Grades</label>
-                                </div>
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="official_receipt" id="official_receipt" style="transform: scale(1.45); margin-right: 10px;" required />
-                                    <label class="form-check-label" for="official_receipt" style="vertical-align: middle; font-size:1.15rem;">Official Receipt</label>
-                                </div>
+                            <div class="form-group col-md-12">
+                                <label for="beneficiaries">Name of Beneficiaries</label>
+                                <textarea name="beneficiaries" id="beneficiaries" class="form-control" rows="4" placeholder="Enter one beneficiary per line"></textarea>
                             </div>
+                        </div>
+                        <div class="row mt-3">
                             <div class="form-group col-md-6">
-                                <!-- removed assistance_barangay per request -->
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="barangay_indigency" id="barangay_indigency" style="transform: scale(1.45); margin-right: 10px;" required />
-                                    <label class="form-check-label" for="barangay_indigency" style="vertical-align: middle; font-size:1.15rem;">Barangay Indigency</label>
-                                </div>
-                                <div class="form-check mt-3">
-                                    <input class="form-check-input" type="checkbox" name="barangay_recidency" id="barangay_recidency" style="transform: scale(1.45); margin-right: 10px;" required />
-                                    <label class="form-check-label" for="barangay_recidency" style="vertical-align: middle; font-size:1.15rem;">Barangay Residency</label>
-                                </div>
+                                <label for="skill_training">Skill / Training</label>
+                                <select name="skill_training" id="skill_training" class="form-control">
+                                    <option value="">-- Select Skill / Training --</option>
+                                    {% for s in skills %}
+                                        <option value="{{ s.id }}">{{ s.Skills_name }}</option>
+                                    {% empty %}
+                                        <option value="">(no skills available)</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                         </div>
                         <div class="row mt-3">
                             <div class="form-group col-md-6">
                                 <label for="date_claimed">Date Claimed</label>
-                                <input type="date" name="date_claimed" id="date_claimed" class="form-control" required />
+                                <input type="date" name="date_claimed" id="date_claimed" class="form-control" />
                             </div>
                             <div class="form-group col-md-6">
                                 <label for="date_claim_expiry">Date Claim Expiry</label>
-                                <input type="date" name="date_claim_expiry" id="date_claim_expiry" class="form-control" required />
+                                <input type="date" name="date_claim_expiry" id="date_claim_expiry" class="form-control" />
                             </div>
                         </div>
                         <div class="row mt-3">
@@ -207,17 +197,13 @@
                     <h5 class="modal-title" id="pesoModalLabel">PESO Assistance Created</h5>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-2"><strong>Tracking Number:</strong> <span id="peso_tracking">{% if recent_reap %}{{ recent_reap.tracking_number }}{% elif recent_bsr %}{{ recent_bsr.tracking_number }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>First name:</strong> <span id="peso_first">{% if recent_reap %}{{ recent_reap.first_name }}{% elif recent_bsr %}{{ recent_bsr.first_name }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Last name:</strong> <span id="peso_last">{% if recent_reap %}{{ recent_reap.last_name }}{% elif recent_bsr %}{{ recent_bsr.last_name }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Date Claimed:</strong> <span id="peso_date_claimed">{% if recent_reap %}{{ recent_reap.date_claimed }}{% elif recent_bsr %}{{ recent_bsr.date_claimed }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Date Claim Expiry:</strong> <span id="peso_date_claim_expiry">{% if recent_reap %}{{ recent_reap.date_claim_expiry }}{% elif recent_bsr %}{{ recent_bsr.date_claim_expiry }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Biodata:</strong> <span id="peso_biodata">{% if recent_reap and recent_reap.biodata %}<span class="text-success">&#10003;</span>{% elif recent_bsr and recent_bsr.biodata %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
-                    <div class="mb-2"><strong>Certificate of Registration:</strong> <span id="peso_cert_reg">{% if recent_reap and recent_reap.certificate_of_reg %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
-                    <div class="mb-2"><strong>Certificate of Grades:</strong> <span id="peso_cert_grades">{% if recent_reap and recent_reap.certificate_of_grades %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
-                    <div class="mb-2"><strong>Official Receipt:</strong> <span id="peso_official_receipt">{% if recent_reap and recent_reap.official_receipt %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
-                    <div class="mb-2"><strong>Barangay Indigency:</strong> <span id="peso_indigency">{% if recent_reap and recent_reap.barangay_indigency %}<span class="text-success">&#10003;</span>{% elif recent_bsr and recent_bsr.barangay_indigency %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
-                    <div class="mb-2"><strong>Barangay Residency:</strong> <span id="peso_recidency">{% if recent_reap and recent_reap.barangay_recidency %}<span class="text-success">&#10003;</span>{% elif recent_bsr and recent_bsr.barangay_recidency %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
+                    <div class="mb-2"><strong>Tracking Number:</strong> <span id="peso_tracking">{% if recent_tupad %}{{ recent_tupad.tracking_number }}{% elif recent_reap %}{{ recent_reap.tracking_number }}{% elif recent_bsr %}{{ recent_bsr.tracking_number }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>First name:</strong> <span id="peso_first">{% if recent_tupad %}{{ recent_tupad.first_name }}{% elif recent_reap %}{{ recent_reap.first_name }}{% elif recent_bsr %}{{ recent_bsr.first_name }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Last name:</strong> <span id="peso_last">{% if recent_tupad %}{{ recent_tupad.last_name }}{% elif recent_reap %}{{ recent_reap.last_name }}{% elif recent_bsr %}{{ recent_bsr.last_name }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Name of Beneficiaries:</strong> <span id="peso_beneficiaries">{% if recent_tupad %}{{ recent_tupad.name_of_beneficiary }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Skill / Training:</strong> <span id="peso_skill">{% if recent_tupad %}{{ recent_tupad.skills_training }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Claimed:</strong> <span id="peso_date_claimed">{% if recent_tupad %}{{ recent_tupad.date_claimed }}{% elif recent_reap %}{{ recent_reap.date_claimed }}{% elif recent_bsr %}{{ recent_bsr.date_claimed }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Claim Expiry:</strong> <span id="peso_date_claim_expiry">{% if recent_tupad %}{{ recent_tupad.date_claim_expiry }}{% elif recent_reap %}{{ recent_reap.date_claim_expiry }}{% elif recent_bsr %}{{ recent_bsr.date_claim_expiry }}{% endif %}</span></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -256,8 +242,8 @@ function submitRFID() {
         return;
     }
     errorDiv.style.display = 'none';
-    // AJAX to check RFID and get previous REAP info
-    fetch('/get/registration_reap/' + encodeURIComponent(rfid) + '/')
+    // AJAX to check RFID and get previous TUPAD info
+    fetch('/get/registration_tupad/' + encodeURIComponent(rfid) + '/')
         .then(function(response) {
             if (!response.ok) throw new Error('Not found');
             return response.json();
@@ -297,24 +283,25 @@ function submitRFID() {
                 document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
             }
 
-            // Show previous REAP assistance (documents)
-            var pa = data.previous_reap_assistance || null;
+            // Show previous TUPAD assistance
+            var pa = data.previous_tupad_assistance || null;
             var paCard = document.querySelector('.card.mb-4 .card-body');
             if (paCard) {
                 if (pa) {
                     paCard.innerHTML = `<div class="row">
-                        <div class="col-12 mb-2"><strong>Last REAP:</strong> ${pa.tracking_number ? pa.tracking_number : ''}</div>
-                        <div class="col-12 mb-2"><strong>Claimed:</strong> ${pa.date_claimed ? pa.date_claimed : ''} <strong>Expiry:</strong> ${pa.date_claim_expiry ? pa.date_claim_expiry : ''}</div>
-                        <div class="col-md-6"><strong>Biodata:</strong> ${pa.biodata ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Certificate of Registration:</strong> ${pa.certificate_of_reg ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Certificate of Grades:</strong> ${pa.certificate_of_grades ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Official Receipt:</strong> ${pa.official_receipt ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Barangay Indigency:</strong> ${pa.barangay_indigency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Barangay Residency:</strong> ${pa.barangay_recidency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-12 mt-2"><strong>Released:</strong> ${pa.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>'}</div>
+                        <div class="col-md-6">
+                            <div class="mb-2"><strong>Last TUPAD:</strong> ${pa.tracking_number ? pa.tracking_number : ''}</div>
+                            <div class="mb-2"><strong>Beneficiaries:</strong> ${pa.name_of_beneficiary ? pa.name_of_beneficiary : ''}</div>
+                            <div class="mb-2"><strong>Skill / Training:</strong> ${pa.skills_training ? pa.skills_training : ''}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-2"><strong>Claimed:</strong> ${pa.date_claimed ? pa.date_claimed : ''}</div>
+                            <div class="mb-2"><strong>Expiry:</strong> ${pa.date_claim_expiry ? pa.date_claim_expiry : ''}</div>
+                            <div class="mb-2"><strong>Released:</strong> ${pa.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>'}</div>
+                        </div>
                     </div>`;
                 } else {
-                    paCard.innerHTML = '<div class="text-muted">No previous REAP found.</div>';
+                    paCard.innerHTML = `<div class="row"><div class="col-12 text-muted">No previous TUPAD found.</div></div>`;
                 }
             }
 
@@ -329,7 +316,10 @@ function submitRFID() {
 
 // Show PESO modal if server passed a recent_reap or recent_bsr in context
 document.addEventListener('DOMContentLoaded', function() {
-    {% if recent_reap %}
+    {% if recent_tupad %}
+        $('#pesoModal').modal({backdrop: 'static', keyboard: false});
+        $('#pesoModal').modal('show');
+    {% elif recent_reap %}
         $('#pesoModal').modal({backdrop: 'static', keyboard: false});
         $('#pesoModal').modal('show');
     {% elif recent_bsr %}

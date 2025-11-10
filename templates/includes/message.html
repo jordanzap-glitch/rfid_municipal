@@ -7,4 +7,22 @@
       </div>
     {% endfor %}
   </div>
+  <script>
+    // Auto-hide visible messages after 3 seconds with a short fade
+    (function(){
+      document.addEventListener('DOMContentLoaded', function(){
+        var msgs = document.querySelectorAll('.visible-message');
+        if (!msgs || msgs.length === 0) return;
+        setTimeout(function(){
+          msgs.forEach(function(m){
+            try {
+              m.style.transition = 'opacity 0.4s ease';
+              m.style.opacity = '0';
+              setTimeout(function(){ m.style.display = 'none'; }, 450);
+            } catch(e) { try { m.style.display = 'none'; } catch(_){} }
+          });
+        }, 3000);
+      });
+    })();
+  </script>
 {% endif %}
