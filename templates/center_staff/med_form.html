@@ -6,9 +6,9 @@
 <section class="section">
     <div class="section-header d-flex justify-content-between align-items-center">
         <h1>Registration Details</h1>
-        <button type="button" class="btn btn-outline-info" id="showRfidModalBtn">
-            <i class="fas fa-id-card"></i> Enter RFID
-        </button>
+        <div class="text-right">
+            <span class="text-muted" style="font-size:1rem; font-weight:600;">Tip: Press <kbd>F5</kbd> to enter RFID</span>
+        </div>
     </div>
 
     <div class="section-body">
@@ -264,22 +264,35 @@
     </div>
 
     <script>
-// Show modal when button is clicked
+// Show modal via F5 key (shortcut) and hook RFID submit
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('showRfidModalBtn').onclick = function() {
+    function openRfidModal() {
         $('#rfidModal').modal({backdrop: 'static', keyboard: false});
         $('#rfidModal').modal('show');
-    };
-    document.getElementById('rfidSubmit').onclick = function() {
-        submitRFID();
-    };
-    document.getElementById('rfidInput').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') submitRFID();
+    }
+
+    // F5 should open the RFID modal instead of refreshing the page
+    document.addEventListener('keydown', function(e) {
+        // e.key === 'F5' is standard; keyCode 116 for older browsers
+        if (e.key === 'F5' || e.keyCode === 116) {
+            e.preventDefault();
+            openRfidModal();
+        }
     });
+
+    var rfidSubmitBtn = document.getElementById('rfidSubmit');
+    if (rfidSubmitBtn) rfidSubmitBtn.onclick = submitRFID;
+
+    var rfidInput = document.getElementById('rfidInput');
+    if (rfidInput) {
+        rfidInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') submitRFID();
+        });
         // Autofocus RFID input when modal is shown
         $('#rfidModal').on('shown.bs.modal', function () {
-            document.getElementById('rfidInput').focus();
+            rfidInput.focus();
         });
+    }
     // Prevent submitting the form when no medicines are selected.
     var assistanceForm = document.getElementById('assistanceForm');
     var medicineError = document.getElementById('medicineError');

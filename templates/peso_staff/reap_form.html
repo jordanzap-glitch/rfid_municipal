@@ -6,9 +6,9 @@
 <section class="section">
     <div class="section-header d-flex justify-content-between align-items-center">
         <h1>Registration Details</h1>
-        <button type="button" class="btn btn-outline-info" id="showRfidModalBtn">
-            <i class="fas fa-id-card"></i> Enter RFID
-        </button>
+        <div class="text-right">
+            <span class="text-muted" style="font-size:1rem; font-weight:600;">Tip: Press <kbd>F5</kbd> to enter RFID</span>
+        </div>
     </div>
 
     <div class="section-body">
@@ -228,24 +228,38 @@
     </div>
 
     <script>
-// Show modal when button is clicked
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('showRfidModalBtn').onclick = function() {
-        $('#rfidModal').modal({backdrop: 'static', keyboard: false});
-        $('#rfidModal').modal('show');
-    };
-    document.getElementById('rfidSubmit').onclick = function() {
-        submitRFID();
-    };
-    document.getElementById('rfidInput').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') submitRFID();
-    });
-        // Autofocus RFID input when modal is shown
-        $('#rfidModal').on('shown.bs.modal', function () {
-            document.getElementById('rfidInput').focus();
+    // Show modal when button is clicked and allow F5 to open the RFID modal (same behavior as med_form)
+    document.addEventListener('DOMContentLoaded', function() {
+        function openRfidModal() {
+            $('#rfidModal').modal({backdrop: 'static', keyboard: false});
+            $('#rfidModal').modal('show');
+        }
+
+        
+
+        // F5 should open the RFID modal instead of refreshing the page
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F5' || e.keyCode === 116) {
+                e.preventDefault();
+                openRfidModal();
+            }
         });
-    // No client-side medicine validation for REAP form (medicines removed)
-});
+
+        var rfidSubmitBtn = document.getElementById('rfidSubmit');
+        if (rfidSubmitBtn) rfidSubmitBtn.onclick = submitRFID;
+
+        var rfidInput = document.getElementById('rfidInput');
+        if (rfidInput) {
+            rfidInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') submitRFID();
+            });
+            // Autofocus RFID input when modal is shown
+            $('#rfidModal').on('shown.bs.modal', function () {
+                rfidInput.focus();
+            });
+        }
+        // No client-side medicine validation for REAP form (medicines removed)
+    });
 
 function submitRFID() {
     var rfid = document.getElementById('rfidInput').value.trim();

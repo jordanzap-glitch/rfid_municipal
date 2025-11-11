@@ -5,9 +5,9 @@
 <section class="section">
     <div class="section-header d-flex justify-content-between align-items-center">
         <h1>Burial Details</h1>
-        <button type="button" class="btn btn-outline-info" id="showRfidModalBtn">
-            <i class="fas fa-id-card"></i> Enter RFID
-        </button>
+        <div class="text-right">
+            <span class="text-muted" style="font-size:1rem; font-weight:600;">Tip: Press <kbd>F5</kbd> to enter RFID</span>
+        </div>
     </div>
 
     <div class="section-body">
@@ -254,13 +254,23 @@
     <script>
 // Minimal JS for the burial form: RFID lookup, recent_bsr modal, and print
 document.addEventListener('DOMContentLoaded', function() {
-    var showBtn = document.getElementById('showRfidModalBtn');
-    if (showBtn) {
-        showBtn.onclick = function() {
-            $('#rfidModal').modal({backdrop: 'static', keyboard: false});
-            $('#rfidModal').modal('show');
-        };
+    function openRfidModal() {
+        $('#rfidModal').modal({backdrop: 'static', keyboard: false});
+        $('#rfidModal').modal('show');
     }
+
+    // F5 should open the RFID modal instead of refreshing the page
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F5' || e.keyCode === 116) {
+            // avoid interrupting typing in inputs/textareas/selects
+            var active = document.activeElement;
+            var tag = active && active.tagName ? active.tagName.toLowerCase() : '';
+            if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
+                e.preventDefault();
+                openRfidModal();
+            }
+        }
+    });
 
     var rfidSubmitBtn = document.getElementById('rfidSubmit');
     if (rfidSubmitBtn) rfidSubmitBtn.onclick = submitRFID;
