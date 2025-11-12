@@ -287,10 +287,11 @@ def GET_REGISTRATION_REAP(request, rfid):
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
         }
 
-        # Get latest REAP record for this registration
-        prev = Peso_reap.objects.filter(registration=reg).order_by('-id').first()
-        if prev:
-            data['previous_reap_assistance'] = {
+        # Return all previous REAP records as a list
+        prev_qs = Peso_reap.objects.filter(registration=reg).order_by('-id')
+        prev_list = []
+        for prev in prev_qs:
+            prev_list.append({
                 'tracking_number': prev.tracking_number if hasattr(prev, 'tracking_number') else '',
                 'biodata': bool(prev.biodata),
                 'certificate_of_reg': bool(prev.certificate_of_reg),
@@ -302,9 +303,8 @@ def GET_REGISTRATION_REAP(request, rfid):
                 'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if getattr(prev, 'date_claimed', None) else '',
                 'date_claim_expiry': prev.date_claim_expiry.strftime('%Y-%m-%d') if getattr(prev, 'date_claim_expiry', None) else '',
                 'is_released': bool(prev.is_released) if hasattr(prev, 'is_released') else False,
-            }
-        else:
-            data['previous_reap_assistance'] = None
+            })
+        data['previous_reap_assistance'] = prev_list
 
         return JsonResponse(data)
     except Registration.DoesNotExist:
@@ -337,18 +337,18 @@ def GET_REGISTRATION_TUPAD(request, rfid):
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
         }
 
-        prev = Peso_tupad.objects.filter(registration=reg).order_by('-id').first()
-        if prev:
-            data['previous_tupad_assistance'] = {
+        prev_qs = Peso_tupad.objects.filter(registration=reg).order_by('-id')
+        prev_list = []
+        for prev in prev_qs:
+            prev_list.append({
                 'tracking_number': prev.tracking_number if hasattr(prev, 'tracking_number') else '',
                 'name_of_beneficiary': prev.name_of_beneficiary or '',
                 'skills_training': prev.skills_training.Skills_name if getattr(prev, 'skills_training', None) else '',
                 'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if getattr(prev, 'date_claimed', None) else '',
                 'date_claim_expiry': prev.date_claim_expiry.strftime('%Y-%m-%d') if getattr(prev, 'date_claim_expiry', None) else '',
                 'is_released': bool(prev.is_released) if hasattr(prev, 'is_released') else False,
-            }
-        else:
-            data['previous_tupad_assistance'] = None
+            })
+        data['previous_tupad_assistance'] = prev_list
 
         return JsonResponse(data)
     except Registration.DoesNotExist:

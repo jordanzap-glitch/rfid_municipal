@@ -114,17 +114,6 @@
                         </div>
                     </div>
                     <hr>
-                        <!-- Previous Assistance Card -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h4>Previous Assistance</h4>
-                            </div>
-                            <div class="card-body">
-                                <!-- two-column placeholder layout; JS will replace contents when RFID is looked up -->
-                                <div class="row">
-                                </div>
-                            </div>
-                        </div>
                     <div class="card-header">
                         <h4>Assistance</h4>
                     </div>
@@ -165,6 +154,54 @@
                         </div>
                     </div>
                 </form>
+                <!-- Previous Assistance Card (rendered outside the assistance form card) -->
+                <div class="card mb-4 mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <h4 class="mb-0 mr-3">Previous Assistance</h4>
+                            <div class="form-inline d-none d-sm-flex align-items-center" style="gap:0.5rem;">
+                                <label for="pageSizeSelectTupad" class="mb-0 small text-muted">Rows per page</label>
+                                <select id="pageSizeSelectTupad" class="form-control form-control-sm">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="card-body">
+                        <div id="previousTupadContainer" style="max-height:320px; overflow:auto;">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-0" id="previousTupadTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Tracking #</th>
+                                            <th>Beneficiaries</th>
+                                            <th>Skill / Training</th>
+                                            <th>Claimed</th>
+                                            <th>Expiry</th>
+                                            <th>Released</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="no-data-row"><td colspan="6" class="text-muted">No previous TUPAD found.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-2" id="paginationControlsTupad">
+                            <div></div>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="pagination">
+                                <button type="button" class="btn btn-outline-primary" id="prevPageBtnTupad">Prev</button>
+                                <span class="px-3 align-self-center" id="pageInfoTupad">0 / 0</span>
+                                <button type="button" class="btn btn-outline-primary" id="nextPageBtnTupad">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -295,27 +332,12 @@ function submitRFID() {
                 document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
             }
 
-            // Show previous TUPAD assistance
-            var pa = data.previous_tupad_assistance || null;
-            var paCard = document.querySelector('.card.mb-4 .card-body');
-            if (paCard) {
-                if (pa) {
-                    paCard.innerHTML = `<div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-2"><strong>Last TUPAD:</strong> ${pa.tracking_number ? pa.tracking_number : ''}</div>
-                            <div class="mb-2"><strong>Beneficiaries:</strong> ${pa.name_of_beneficiary ? pa.name_of_beneficiary : ''}</div>
-                            <div class="mb-2"><strong>Skill / Training:</strong> ${pa.skills_training ? pa.skills_training : ''}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-2"><strong>Claimed:</strong> ${pa.date_claimed ? pa.date_claimed : ''}</div>
-                            <div class="mb-2"><strong>Expiry:</strong> ${pa.date_claim_expiry ? pa.date_claim_expiry : ''}</div>
-                            <div class="mb-2"><strong>Released:</strong> ${pa.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>'}</div>
-                        </div>
-                    </div>`;
-                } else {
-                    paCard.innerHTML = `<div class="row"><div class="col-12 text-muted">No previous TUPAD found.</div></div>`;
-                }
-            }
+            // Show previous TUPAD assistance (array)
+            var pa = data.previous_tupad_assistance || [];
+            var rows = Array.isArray(pa) ? pa : (pa ? [pa] : []);
+            window.previousTupadData = rows;
+            window.previousTupadCurrentPage = 1;
+            renderPreviousTupadPage();
 
             // Close modal
             $('#rfidModal').modal('hide');
@@ -356,6 +378,72 @@ document.addEventListener('click', function(e){
         setTimeout(function(){ w.print(); w.close(); }, 500);
     }
 });
+
+// ===== Previous TUPAD Pagination & Wheel Handling =====
+(function(){
+    window.previousTupadData = window.previousTupadData || [];
+    window.previousTupadCurrentPage = window.previousTupadCurrentPage || 1;
+
+    function getTupadPageSize() {
+        var sel = document.getElementById('pageSizeSelectTupad');
+        var v = sel ? parseInt(sel.value,10) : 10;
+        if (!v || v <= 0) v = 10;
+        return v;
+    }
+
+    function renderPreviousTupadPage() {
+        var data = window.previousTupadData || [];
+        var page = window.previousTupadCurrentPage || 1;
+        var pageSize = getTupadPageSize();
+        var total = data.length;
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;
+        if (page < 1) page = 1;
+        window.previousTupadCurrentPage = page;
+
+        var start = (page - 1) * pageSize;
+        var end = Math.min(start + pageSize, total);
+        var slice = data.slice(start, end);
+
+        var table = document.getElementById('previousTupadTable');
+        if (!table) return;
+        var tbody = table.querySelector('tbody'); tbody.innerHTML = '';
+
+        if (!slice.length) {
+            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','6'); td.className='text-muted'; td.textContent='No previous TUPAD found.'; tr.appendChild(td); tbody.appendChild(tr);
+        } else {
+            slice.forEach(function(item){
+                var tr = document.createElement('tr');
+                var t0 = document.createElement('td'); t0.textContent = item.tracking_number || '';
+                var t1 = document.createElement('td'); t1.textContent = item.name_of_beneficiary || '';
+                var t2 = document.createElement('td'); t2.textContent = item.skills_training || '';
+                var t3 = document.createElement('td'); t3.textContent = item.date_claimed || '';
+                var t4 = document.createElement('td'); t4.textContent = item.date_claim_expiry || '';
+                var t5 = document.createElement('td'); t5.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
+                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5);
+                tbody.appendChild(tr);
+            });
+        }
+
+        var pageInfo = document.getElementById('pageInfoTupad'); if (pageInfo) pageInfo.textContent = page + ' / ' + totalPages;
+        var container = document.getElementById('previousTupadContainer'); if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        var prev = document.getElementById('prevPageBtnTupad');
+        var next = document.getElementById('nextPageBtnTupad');
+        var pageSizeSel = document.getElementById('pageSizeSelectTupad');
+
+        if (prev) prev.addEventListener('click', function(){ window.previousTupadCurrentPage = Math.max(1, (window.previousTupadCurrentPage || 1) - 1); renderPreviousTupadPage(); });
+        if (next) next.addEventListener('click', function(){ var total = (window.previousTupadData || []).length; var pages = Math.max(1, Math.ceil(total / getTupadPageSize())); window.previousTupadCurrentPage = Math.min(pages, (window.previousTupadCurrentPage || 1) + 1); renderPreviousTupadPage(); });
+        if (pageSizeSel) pageSizeSel.addEventListener('change', function(){ window.previousTupadCurrentPage = 1; renderPreviousTupadPage(); });
+
+        var container = document.getElementById('previousTupadContainer'); if (container) { container.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive: false }); }
+        renderPreviousTupadPage();
+    });
+
+    window.renderPreviousTupadPage = renderPreviousTupadPage;
+})();
 </script>
 
 {% endblock %}

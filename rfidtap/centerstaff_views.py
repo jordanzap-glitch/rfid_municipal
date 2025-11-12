@@ -342,21 +342,24 @@ def GET_REGISTRATION(request, rfid):
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
             'zone_street': reg.zone_street or '',
         }
-        # Get latest previous assistance for this registration
-        prev = Bsrcenter.objects.filter(registration=reg).order_by('-id').first()
-        if prev:
+        # Get all previous assistance records for this registration (new: return list)
+        prev_qs = Bsrcenter.objects.filter(registration=reg).order_by('-id')
+        previous_list = []
+        for prev in prev_qs:
             # Get medicine names from the Bsrcenter_meds linking table
             meds_qs = Bsrcenter_meds.objects.filter(bsrcenter=prev).select_related('medicines')
-            med_names = ', '.join([m.medicines.medicine_name for m in meds_qs]) if meds_qs.exists() else ''
-            data['previous_assistance'] = {
+            med_names_list = [m.medicines.medicine_name for m in meds_qs] if meds_qs.exists() else []
+            med_names = ', '.join(med_names_list)
+            previous_list.append({
                 'tracking_number': prev.tracking_number if getattr(prev, 'tracking_number', None) else '',
                 'amount': str(prev.amount) if prev.amount is not None else '',
+                'medicines': med_names_list,
                 'medicine_name': med_names,
                 'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if prev.date_claimed else '',
                 'date_claim_expiry': prev.date_claim_expiry.strftime('%Y-%m-%d') if prev.date_claim_expiry else '',
-            }
-        else:
-            data['previous_assistance'] = None
+            })
+        # return an array (may be empty) — frontend code normalizes arrays or single objects
+        data['previous_assistance'] = previous_list
         return JsonResponse(data)
     except Registration.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
@@ -394,9 +397,11 @@ def GET_REGISTRATION_BURIALS(request, rfid):
             'zone_street': reg.zone_street or '',
         }
 
-        prev = Bsrcenter_Burial.objects.filter(registration=reg).order_by('-id').first()
-        if prev:
-            data['previous_burial_assistance'] = {
+        # Return all previous burial assistance records as a list
+        prev_qs = Bsrcenter_Burial.objects.filter(registration=reg).order_by('-id')
+        prev_list = []
+        for prev in prev_qs:
+            prev_list.append({
                 'tracking_number': prev.tracking_number if getattr(prev, 'tracking_number', None) else '',
                 'deceased_name': prev.deceased_name,
                 'cause_of_death': prev.cause_of_death or '',
@@ -404,9 +409,8 @@ def GET_REGISTRATION_BURIALS(request, rfid):
                 'amount': str(prev.amount) if prev.amount is not None else '',
                 'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if prev.date_claimed else '',
                 'date_claim_expiry': prev.date_claim_expiry.strftime('%Y-%m-%d') if prev.date_claim_expiry else '',
-            }
-        else:
-            data['previous_burial_assistance'] = None
+            })
+        data['previous_burial_assistance'] = prev_list
 
         return JsonResponse(data)
     except Registration.DoesNotExist:

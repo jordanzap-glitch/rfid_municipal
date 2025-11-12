@@ -114,14 +114,6 @@
                         </div>
                     </div>
                     <hr>
-                        <!-- Previous Assistance Card -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h4>Previous Assistance</h4>
-                            </div>
-                            <div class="card-body">
-                            </div>
-                        </div>
                     <div class="card-header">
                         <h4>Assistance</h4>
                     </div>
@@ -175,6 +167,58 @@
                         </div>
                     </div>
                 </form>
+                <!-- Previous Assistance Card (rendered outside the assistance form card) -->
+                <div class="card mb-4 mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <h4 class="mb-0 mr-3">Previous Assistance</h4>
+                            <div class="form-inline d-none d-sm-flex align-items-center" style="gap:0.5rem;">
+                                <label for="pageSizeSelectReap" class="mb-0 small text-muted">Rows per page</label>
+                                <select id="pageSizeSelectReap" class="form-control form-control-sm">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="card-body">
+                        <div id="previousReapContainer" style="max-height:320px; overflow:auto;">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-0" id="previousReapTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Tracking #</th>
+                                            <th>Claimed</th>
+                                            <th>Expiry</th>
+                                            <th>Biodata</th>
+                                            <th>Cert Reg</th>
+                                            <th>Cert Grades</th>
+                                            <th>Official Receipt</th>
+                                            <th>Indigency</th>
+                                            <th>Residency</th>
+                                            <th>Released</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="no-data-row"><td colspan="10" class="text-muted">No previous REAP found.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-2" id="paginationControlsReap">
+                            <div></div>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="pagination">
+                                <button type="button" class="btn btn-outline-primary" id="prevPageBtnReap">Prev</button>
+                                <span class="px-3 align-self-center" id="pageInfoReap">0 / 0</span>
+                                <button type="button" class="btn btn-outline-primary" id="nextPageBtnReap">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -311,26 +355,12 @@ function submitRFID() {
                 document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
             }
 
-            // Show previous REAP assistance (documents)
-            var pa = data.previous_reap_assistance || null;
-            var paCard = document.querySelector('.card.mb-4 .card-body');
-            if (paCard) {
-                if (pa) {
-                    paCard.innerHTML = `<div class="row">
-                        <div class="col-12 mb-2"><strong>Last REAP:</strong> ${pa.tracking_number ? pa.tracking_number : ''}</div>
-                        <div class="col-12 mb-2"><strong>Claimed:</strong> ${pa.date_claimed ? pa.date_claimed : ''} <strong>Expiry:</strong> ${pa.date_claim_expiry ? pa.date_claim_expiry : ''}</div>
-                        <div class="col-md-6"><strong>Biodata:</strong> ${pa.biodata ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Certificate of Registration:</strong> ${pa.certificate_of_reg ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Certificate of Grades:</strong> ${pa.certificate_of_grades ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Official Receipt:</strong> ${pa.official_receipt ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Barangay Indigency:</strong> ${pa.barangay_indigency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-md-6"><strong>Barangay Residency:</strong> ${pa.barangay_recidency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>'}</div>
-                        <div class="col-12 mt-2"><strong>Released:</strong> ${pa.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>'}</div>
-                    </div>`;
-                } else {
-                    paCard.innerHTML = '<div class="text-muted">No previous REAP found.</div>';
-                }
-            }
+            // Show previous REAP assistance (array of records)
+            var pa = data.previous_reap_assistance || [];
+            var rows = Array.isArray(pa) ? pa : (pa ? [pa] : []);
+            window.previousReapData = rows;
+            window.previousReapCurrentPage = 1;
+            renderPreviousReapPage();
 
             // Close modal
             $('#rfidModal').modal('hide');
@@ -368,6 +398,77 @@ document.addEventListener('click', function(e){
         setTimeout(function(){ w.print(); w.close(); }, 500);
     }
 });
+
+// ===== Previous REAP Pagination & Wheel Handling =====
+(function(){
+    window.previousReapData = window.previousReapData || [];
+    window.previousReapCurrentPage = window.previousReapCurrentPage || 1;
+
+    function getReapPageSize() {
+        var sel = document.getElementById('pageSizeSelectReap');
+        var v = sel ? parseInt(sel.value,10) : 10;
+        if (!v || v <= 0) v = 10;
+        return v;
+    }
+
+    function renderPreviousReapPage() {
+        var data = window.previousReapData || [];
+        var page = window.previousReapCurrentPage || 1;
+        var pageSize = getReapPageSize();
+        var total = data.length;
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;
+        if (page < 1) page = 1;
+        window.previousReapCurrentPage = page;
+
+        var start = (page - 1) * pageSize;
+        var end = Math.min(start + pageSize, total);
+        var slice = data.slice(start, end);
+
+        var table = document.getElementById('previousReapTable');
+        if (!table) return;
+        var tbody = table.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        if (!slice.length) {
+            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','10'); td.className='text-muted'; td.textContent='No previous REAP found.'; tr.appendChild(td); tbody.appendChild(tr);
+        } else {
+            slice.forEach(function(item){
+                var tr = document.createElement('tr');
+                var t0 = document.createElement('td'); t0.textContent = item.tracking_number || '';
+                var t1 = document.createElement('td'); t1.textContent = item.date_claimed || '';
+                var t2 = document.createElement('td'); t2.textContent = item.date_claim_expiry || '';
+                var t3 = document.createElement('td'); t3.innerHTML = item.biodata ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t4 = document.createElement('td'); t4.innerHTML = item.certificate_of_reg ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t5 = document.createElement('td'); t5.innerHTML = item.certificate_of_grades ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t6 = document.createElement('td'); t6.innerHTML = item.official_receipt ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t7 = document.createElement('td'); t7.innerHTML = item.barangay_indigency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t8 = document.createElement('td'); t8.innerHTML = item.barangay_recidency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t9 = document.createElement('td'); t9.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
+                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6); tr.appendChild(t7); tr.appendChild(t8); tr.appendChild(t9);
+                tbody.appendChild(tr);
+            });
+        }
+
+        var pageInfo = document.getElementById('pageInfoReap'); if (pageInfo) pageInfo.textContent = page + ' / ' + totalPages;
+        var container = document.getElementById('previousReapContainer'); if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        var prev = document.getElementById('prevPageBtnReap');
+        var next = document.getElementById('nextPageBtnReap');
+        var pageSizeSel = document.getElementById('pageSizeSelectReap');
+
+        if (prev) prev.addEventListener('click', function(){ window.previousReapCurrentPage = Math.max(1, (window.previousReapCurrentPage || 1) - 1); renderPreviousReapPage(); });
+        if (next) next.addEventListener('click', function(){ var total = (window.previousReapData || []).length; var pages = Math.max(1, Math.ceil(total / getReapPageSize())); window.previousReapCurrentPage = Math.min(pages, (window.previousReapCurrentPage || 1) + 1); renderPreviousReapPage(); });
+        if (pageSizeSel) pageSizeSel.addEventListener('change', function(){ window.previousReapCurrentPage = 1; renderPreviousReapPage(); });
+
+        var container = document.getElementById('previousReapContainer'); if (container) { container.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive: false }); }
+        renderPreviousReapPage();
+    });
+
+    window.renderPreviousReapPage = renderPreviousReapPage;
+})();
 </script>
 
 {% endblock %}

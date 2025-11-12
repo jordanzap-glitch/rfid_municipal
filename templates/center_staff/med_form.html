@@ -114,32 +114,6 @@
                         </div>
                     </div>
                     <hr>
-                        <!-- Previous Assistance Card -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h4>Previous Assistance</h4>
-                            </div>
-                            <div class="card-body">
-                                {% if previous_assistance %}
-                                    <div class="row">
-                                        <div class="col-md-3">
-                                            <strong>Amount:</strong> {{ previous_assistance.amount }}
-                                        </div>
-                                        <div class="col-md-3">
-                                            <strong>Medicine:</strong> {{ previous_assistance.medicine_name }}
-                                        </div>
-                                        <div class="col-md-3">
-                                            <strong>Date Claimed:</strong> {{ previous_assistance.date_claimed }}
-                                        </div>
-                                        <div class="col-md-3">
-                                            <strong>Date Claim Expiry:</strong> {{ previous_assistance.date_claim_expiry }}
-                                        </div>
-                                    </div>
-                                {% else %}
-                                    <div class="text-muted">No previous assistance found.</div>
-                                {% endif %}
-                            </div>
-                        </div>
                     <div class="card-header">
                         <h4>Assistance</h4>
                     </div>
@@ -206,6 +180,56 @@
                         </div>
                     </div>
                 </form>
+                <!-- Previous Assistance Card (rendered outside the assistance form card) -->
+                <div class="card mb-4 mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <h4 class="mb-0 mr-3">Previous Assistance</h4>
+                            <div class="form-inline d-none d-sm-flex align-items-center" style="gap:0.5rem;">
+                                <label for="pageSizeSelect" class="mb-0 small text-muted">Rows per page</label>
+                                <select id="pageSizeSelect" class="form-control form-control-sm">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Table of previous assistance entries (populated by JS).
+                             The API may return a single object or an array; JS will normalize both. -->
+                        <div id="previousAssistanceContainer" style="max-height:320px; overflow:auto;"> 
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-0" id="previousAssistanceTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Tracking #</th>
+                                            <th>Amount</th>
+                                            <th>Medicine(s)</th>
+                                            <th>Date Claimed</th>
+                                            <th>Date Claim Expiry</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="no-data-row"><td colspan="5" class="text-muted">No previous assistance found.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Pagination controls -->
+                        <div class="d-flex justify-content-between align-items-center mt-2" id="paginationControls">
+                            <div></div>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="pagination">
+                                <button type="button" class="btn btn-outline-primary" id="prevPageBtn">Prev</button>
+                                <span class="px-3 align-self-center" id="pageInfo">0 / 0</span>
+                                <button type="button" class="btn btn-outline-primary" id="nextPageBtn">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -377,22 +401,16 @@ function submitRFID() {
                 document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
             }
 
-            // Show previous assistance
+            // Show previous assistance: normalize into an array and store for pagination
             var pa = data.previous_assistance || null;
-            var paCard = document.querySelector('.card.mb-4 .card-body');
-            if (paCard) {
-                if (pa) {
-                    paCard.innerHTML = `<div class="mb-2"><strong>Tracking Number:</strong> ${pa.tracking_number || ''}</div>
-                    <div class="row">
-                        <div class="col-md-3"><strong>Amount:</strong> ${pa.amount || ''}</div>
-                        <div class="col-md-3"><strong>Medicine:</strong> ${pa.medicine_name || ''}</div>
-                        <div class="col-md-3"><strong>Date Claimed:</strong> ${pa.date_claimed || ''}</div>
-                        <div class="col-md-3"><strong>Date Claim Expiry:</strong> ${pa.date_claim_expiry || ''}</div>
-                    </div>`;
-                } else {
-                    paCard.innerHTML = '<div class="text-muted">No previous assistance found.</div>';
-                }
-            }
+            var rows = [];
+            if (Array.isArray(pa)) rows = pa;
+            else if (pa) rows = [pa];
+
+            // store for pagination renderer
+            window.previousAssistanceData = rows;
+            window.previousAssistanceCurrentPage = 1;
+            renderPreviousAssistancePage();
 
             // Close modal
             $('#rfidModal').modal('hide');
@@ -564,6 +582,115 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#bsrModal').modal('show');
     {% endif %}
 });
+
+// ===== Previous Assistance Pagination & Scroll Helpers =====
+// data is stored in window.previousAssistanceData (array)
+(function(){
+    // defaults
+    window.previousAssistanceData = window.previousAssistanceData || [];
+    window.previousAssistanceCurrentPage = window.previousAssistanceCurrentPage || 1;
+
+    function getPageSize() {
+        var sel = document.getElementById('pageSizeSelect');
+        var v = sel ? parseInt(sel.value, 10) : 10;
+        if (!v || v <= 0) v = 10;
+        return v;
+    }
+
+    function renderPreviousAssistancePage() {
+        var data = window.previousAssistanceData || [];
+        var page = window.previousAssistanceCurrentPage || 1;
+        var pageSize = getPageSize();
+        var total = data.length;
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;
+        if (page < 1) page = 1;
+        window.previousAssistanceCurrentPage = page;
+
+        var start = (page - 1) * pageSize;
+        var end = Math.min(start + pageSize, total);
+        var slice = data.slice(start, end);
+
+        var paTable = document.getElementById('previousAssistanceTable');
+        if (!paTable) return;
+        var tbody = paTable.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        if (!slice.length) {
+            var tr = document.createElement('tr');
+            var td = document.createElement('td');
+            td.setAttribute('colspan', '5');
+            td.className = 'text-muted';
+            td.textContent = 'No previous assistance found.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        } else {
+            slice.forEach(function(item){
+                var tr = document.createElement('tr');
+                var trackTd = document.createElement('td'); trackTd.textContent = item.tracking_number || '';
+                var amtTd = document.createElement('td'); amtTd.textContent = item.amount || '';
+                var medTd = document.createElement('td');
+                if (Array.isArray(item.medicines)) medTd.textContent = item.medicines.join(', ');
+                else medTd.textContent = item.medicine_name || item.medicines || '';
+                var claimedTd = document.createElement('td'); claimedTd.textContent = item.date_claimed || '';
+                var expiryTd = document.createElement('td'); expiryTd.textContent = item.date_claim_expiry || '';
+                tr.appendChild(trackTd);
+                tr.appendChild(amtTd);
+                tr.appendChild(medTd);
+                tr.appendChild(claimedTd);
+                tr.appendChild(expiryTd);
+                tbody.appendChild(tr);
+            });
+        }
+
+        // update page info
+        var pageInfo = document.getElementById('pageInfo');
+        if (pageInfo) pageInfo.textContent = page + ' / ' + totalPages;
+
+        // scroll container to top when page changes
+        var container = document.getElementById('previousAssistanceContainer');
+        if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Wire controls after DOM ready
+    document.addEventListener('DOMContentLoaded', function(){
+    var prevBtn = document.getElementById('prevPageBtn');
+    var nextBtn = document.getElementById('nextPageBtn');
+    var pageSizeSel = document.getElementById('pageSizeSelect');
+        
+
+        if (prevBtn) prevBtn.addEventListener('click', function(){
+            window.previousAssistanceCurrentPage = Math.max(1, (window.previousAssistanceCurrentPage || 1) - 1);
+            renderPreviousAssistancePage();
+        });
+        if (nextBtn) nextBtn.addEventListener('click', function(){
+            var total = (window.previousAssistanceData || []).length;
+            var pages = Math.max(1, Math.ceil(total / getPageSize()));
+            window.previousAssistanceCurrentPage = Math.min(pages, (window.previousAssistanceCurrentPage || 1) + 1);
+            renderPreviousAssistancePage();
+        });
+        if (pageSizeSel) pageSizeSel.addEventListener('change', function(){
+            // keep the first item on the new page if possible
+            window.previousAssistanceCurrentPage = 1;
+            renderPreviousAssistancePage();
+        });
+
+        // Disable mouse-wheel scrolling inside the previous assistance container
+        var container = document.getElementById('previousAssistanceContainer');
+        if (container) {
+            // prevent wheel from scrolling the container (passive:false needed to call preventDefault)
+            container.addEventListener('wheel', function(e){
+                e.preventDefault();
+            }, { passive: false });
+        }
+
+        // initial render in case there is server-provided data at load time
+        renderPreviousAssistancePage();
+    });
+
+    // expose the renderer so submitRFID can call it
+    window.renderPreviousAssistancePage = renderPreviousAssistancePage;
+})();
 
 // Print modal contents in a new window (simple approach)
 document.addEventListener('click', function(e){

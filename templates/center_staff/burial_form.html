@@ -113,41 +113,6 @@
                         </div>
                     </div>
                     <hr>
-                        <!-- Previous Assistance Card -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h4>Previous Assistance</h4>
-                            </div>
-                            <div class="card-body">
-                                    {% comment %}Show only previous burial assistance for this form.{% endcomment %}
-                                    {% if previous_burial_assistance %}
-                                        <div class="row">
-                                            <div class="col-md-4">
-                                                <strong>Deceased:</strong> {{ previous_burial_assistance.deceased_name }}
-                                            </div>
-                                            <div class="col-md-4">
-                                                <strong>Relationship:</strong> {{ previous_burial_assistance.relationship }}
-                                            </div>
-                                            <div class="col-md-4">
-                                                <strong>Cause:</strong> {{ previous_burial_assistance.cause_of_death }}
-                                            </div>
-                                        </div>
-                                        <div class="row mt-2">
-                                            <div class="col-md-4">
-                                                <strong>Amount:</strong> {{ previous_burial_assistance.amount }}
-                                            </div>
-                                            <div class="col-md-4">
-                                                <strong>Date Claimed:</strong> {{ previous_burial_assistance.date_claimed }}
-                                            </div>
-                                            <div class="col-md-4">
-                                                <strong>Date Claim Expiry:</strong> {{ previous_burial_assistance.date_claim_expiry }}
-                                            </div>
-                                        </div>
-                                    {% else %}
-                                        <div class="text-muted">No previous burial assistance found.</div>
-                                    {% endif %}
-                                </div>
-                        </div>
                     <div class="card-header">
                         <h4>Assistance</h4>
                     </div>
@@ -199,6 +164,55 @@
                         </div>
                     </div>
                 </form>
+                <!-- Previous Assistance Card (rendered outside the assistance form card) -->
+                <div class="card mb-4 mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <h4 class="mb-0 mr-3">Previous Assistance</h4>
+                            <div class="form-inline d-none d-sm-flex align-items-center" style="gap:0.5rem;">
+                                <label for="pageSizeSelectBurial" class="mb-0 small text-muted">Rows per page</label>
+                                <select id="pageSizeSelectBurial" class="form-control form-control-sm">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="card-body">
+                        <div id="previousBurialContainer" style="max-height:320px; overflow:auto;">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-0" id="previousBurialTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Tracking #</th>
+                                            <th>Deceased</th>
+                                            <th>Relationship</th>
+                                            <th>Cause</th>
+                                            <th>Amount</th>
+                                            <th>Date Claimed</th>
+                                            <th>Date Claim Expiry</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="no-data-row"><td colspan="7" class="text-muted">No previous burial assistance found.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-2" id="paginationControlsBurial">
+                            <div></div>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="pagination">
+                                <button type="button" class="btn btn-outline-primary" id="prevPageBtnBurial">Prev</button>
+                                <span class="px-3 align-self-center" id="pageInfoBurial">0 / 0</span>
+                                <button type="button" class="btn btn-outline-primary" id="nextPageBtnBurial">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -345,25 +359,13 @@ function submitRFID() {
                 }
             }
 
-            // Show previous burial assistance (if provided by API)
-            var pb = data.previous_burial_assistance || null;
-            var paCard = document.querySelector('.card.mb-4 .card-body');
-            if (paCard) {
-                if (pb) {
-                    paCard.innerHTML = `<div class="mb-2"><strong>Tracking Number:</strong> ${pb.tracking_number || ''}</div>
-                    <div class="row">
-                        <div class="col-md-4"><strong>Deceased:</strong> ${pb.deceased_name || ''}</div>
-                        <div class="col-md-4"><strong>Relationship:</strong> ${pb.relationship || ''}</div>
-                        <div class="col-md-4"><strong>Cause:</strong> ${pb.cause_of_death || ''}</div>
-                        <div class="w-100"></div>
-                        <div class="col-md-4"><strong>Amount:</strong> ${pb.amount || ''}</div>
-                        <div class="col-md-4"><strong>Date Claimed:</strong> ${pb.date_claimed || ''}</div>
-                        <div class="col-md-4"><strong>Date Claim Expiry:</strong> ${pb.date_claim_expiry || ''}</div>
-                    </div>`;
-                } else {
-                    paCard.innerHTML = '<div class="text-muted">No previous burial assistance found.</div>';
-                }
-            }
+            // Show previous burial assistance (API returns an array or empty list)
+            var pb = data.previous_burial_assistance || [];
+            var rows = Array.isArray(pb) ? pb : (pb ? [pb] : []);
+            // store for pagination renderer
+            window.previousBurialData = rows;
+            window.previousBurialCurrentPage = 1;
+            renderPreviousBurialPage();
 
             // Close modal
             $('#rfidModal').modal('hide');
@@ -389,6 +391,91 @@ document.addEventListener('click', function(e){
         setTimeout(function(){ w.print(); w.close(); }, 500);
     }
 });
+
+// ===== Previous Burial Pagination & Wheel Handling =====
+(function(){
+    window.previousBurialData = window.previousBurialData || [];
+    window.previousBurialCurrentPage = window.previousBurialCurrentPage || 1;
+
+    function getBurialPageSize() {
+        var sel = document.getElementById('pageSizeSelectBurial');
+        var v = sel ? parseInt(sel.value,10) : 10;
+        if (!v || v <= 0) v = 10;
+        return v;
+    }
+
+    function renderPreviousBurialPage() {
+        var data = window.previousBurialData || [];
+        var page = window.previousBurialCurrentPage || 1;
+        var pageSize = getBurialPageSize();
+        var total = data.length;
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;
+        if (page < 1) page = 1;
+        window.previousBurialCurrentPage = page;
+
+        var start = (page - 1) * pageSize;
+        var end = Math.min(start + pageSize, total);
+        var slice = data.slice(start, end);
+
+        var table = document.getElementById('previousBurialTable');
+        if (!table) return;
+        var tbody = table.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        if (!slice.length) {
+            var tr = document.createElement('tr');
+            var td = document.createElement('td'); td.setAttribute('colspan','7'); td.className='text-muted'; td.textContent = 'No previous burial assistance found.';
+            tr.appendChild(td); tbody.appendChild(tr);
+        } else {
+            slice.forEach(function(item){
+                var tr = document.createElement('tr');
+                var t0 = document.createElement('td'); t0.textContent = item.tracking_number || '';
+                var t1 = document.createElement('td'); t1.textContent = item.deceased_name || '';
+                var t2 = document.createElement('td'); t2.textContent = item.relationship || '';
+                var t3 = document.createElement('td'); t3.textContent = item.cause_of_death || '';
+                var t4 = document.createElement('td'); t4.textContent = item.amount || '';
+                var t5 = document.createElement('td'); t5.textContent = item.date_claimed || '';
+                var t6 = document.createElement('td'); t6.textContent = item.date_claim_expiry || '';
+                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6);
+                tbody.appendChild(tr);
+            });
+        }
+
+        var pageInfo = document.getElementById('pageInfoBurial');
+        if (pageInfo) pageInfo.textContent = page + ' / ' + totalPages;
+
+        var container = document.getElementById('previousBurialContainer');
+        if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        var prev = document.getElementById('prevPageBtnBurial');
+        var next = document.getElementById('nextPageBtnBurial');
+        var pageSizeSel = document.getElementById('pageSizeSelectBurial');
+
+        if (prev) prev.addEventListener('click', function(){
+            window.previousBurialCurrentPage = Math.max(1, (window.previousBurialCurrentPage || 1) - 1);
+            renderPreviousBurialPage();
+        });
+        if (next) next.addEventListener('click', function(){
+            var total = (window.previousBurialData || []).length;
+            var pages = Math.max(1, Math.ceil(total / getBurialPageSize()));
+            window.previousBurialCurrentPage = Math.min(pages, (window.previousBurialCurrentPage || 1) + 1);
+            renderPreviousBurialPage();
+        });
+        if (pageSizeSel) pageSizeSel.addEventListener('change', function(){ window.previousBurialCurrentPage = 1; renderPreviousBurialPage(); });
+
+        var container = document.getElementById('previousBurialContainer');
+        if (container) {
+            container.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive: false });
+        }
+
+        renderPreviousBurialPage();
+    });
+
+    window.renderPreviousBurialPage = renderPreviousBurialPage;
+})();
 </script>
 
 {% endblock %}
