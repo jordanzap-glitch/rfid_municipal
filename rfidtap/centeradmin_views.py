@@ -1,125 +1,122 @@
 from django.views.decorators.http import require_GET
-from django.shortcuts import render,redirect, HttpResponse, get_object_or_404
+from django.shortcuts import render, redirect, HttpResponse, get_object_or_404
 from django.contrib.auth import authenticate, logout, login, get_user_model
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Bsrcenter, Medicines
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Status
 
 
 def home(request):
     return render(request,'center_admin/home.html')
 
 def APPROVAL_TABLE(request):
-    # Handle approval POST: accept registration_id and approve all Bsrcenter entries for that registration
+    """
+    Build approval table using Bsrcenter and related Bsrcenter_meds and Status.
+
+    - POST with registration_id will mark all Bsrcenter rows for that registration as approved (status id 2).
+    - The template expects a context key `bsrcenter_data` (list of aggregated rows).
+    """
+    # Map status ids to canonical strings
+    STATUS_MAP = {1: 'pending', 2: 'approved', 3: 'rejected'}
+
+    # Handle POST: set status for a specific Bsrcenter row (preferred) or fallback to one row by registration
     if request.method == 'POST':
+        # Prefer a specific bsrcenter row id so we only change one row even if multiple rows share the same registration
+        bsrcenter_id = request.POST.get('bsrcenter_id')
         registration_id = request.POST.get('registration_id') or request.POST.get('id')
-        if registration_id:
-            try:
-                entries = Bsrcenter.objects.filter(registration_id=registration_id)
-                for b in entries:
-                    # create an approved record per medicine if not exists
-                    exists = Bsrcenter.objects.filter(
-                        registration=b.registration,
-                        medicines=b.medicines,
-                        status='approved'
-                    ).exists()
-                    if not exists:
-                        Bsrcenter.objects.create(
-                            registration=b.registration,
-                            medicines=b.medicines,
-                            age=b.age,
-                            amount=b.amount,
-                            date_claimed=b.date_claimed,
-                            date_claim_expiry=b.date_claim_expiry,
-                            status='approved'
-                        )
-            except Exception:
-                # keep behavior tolerant; ignore issues and continue
-                pass
+        try:
+            target_status = int(request.POST.get('target_status') or 2)
+        except Exception:
+            target_status = 2
 
-    # Aggregate Bsrcenter rows by registration
-    Bsrcenters = Bsrcenter.objects.select_related('registration', 'medicines').all().order_by('registration_id')
-    grouped = {}
-    for b in Bsrcenters:
-        reg = b.registration
-        key = reg.id
-        if key not in grouped:
-            grouped[key] = {
-                'registration_id': reg.id,
-                'rfid': reg.rfid,
-                'last_name': reg.last_name,
-                'first_name': reg.first_name,
-                'middle_name': reg.middle_name,
-                'name_extension': reg.name_extension,
-                'date_of_birth': reg.date_of_birth,
-                'mobile_no': reg.mobile_no,
-                'gender': reg.gender,
-                'civil_status': reg.civil_status,
-                'occupation': reg.occupation,
-                'email': reg.email,
-                'province': reg.province.province_name if reg.province else '',
-                'municipality': reg.municipality.municipality_name if reg.municipality else '',
-                'barangay': reg.barangay.barangay_name if reg.barangay else '',
-                'age': b.age,
-                'amounts': [],
-                'medicines': [],
-                'date_claim_expiries': [],
-                'statuses': set(),
-            }
-        # append medicine info, avoid duplicates
-        m_id = b.medicines.id if b.medicines else None
-        m_name = b.medicines.medicine_name if b.medicines else ''
-        if m_id and not any(m['id'] == m_id for m in grouped[key]['medicines']):
-            grouped[key]['medicines'].append({'id': m_id, 'name': m_name})
-        grouped[key]['amounts'].append(b.amount)
-        grouped[key]['date_claim_expiries'].append(b.date_claim_expiry)
-        grouped[key]['statuses'].add(b.status)
+        try:
+            if bsrcenter_id:
+                # update only the specific row
+                Bsrcenter.objects.filter(id=bsrcenter_id).update(status_id=target_status)
+            elif registration_id:
+                # fallback: update only one row for that registration (the earliest by id)
+                one = Bsrcenter.objects.filter(registration_id=registration_id).order_by('id').first()
+                if one:
+                    Bsrcenter.objects.filter(id=one.id).update(status_id=target_status)
+        except Exception:
+            # tolerate errors and continue
+            pass
+        # Redirect after handling POST to avoid form re-submission on browser refresh (PRG pattern)
+        return redirect(request.path)
 
-    # Build final list for template
+    # Fetch Bsrcenter rows with registration and status; prefetch related medicines via Bsrcenter_meds
+    Bsrcenters = (
+        Bsrcenter.objects
+        .select_related('registration', 'status')
+        .prefetch_related('bsrcenter_meds_set__medicines')
+        .all()
+        .order_by('id')
+    )
+
+    # Build a flat list: one entry per Bsrcenter row (instead of aggregating by registration)
     data = []
-    for key, g in grouped.items():
-        # Determine aggregated status: approved > pending > rejected > other
-        statuses = g['statuses']
-        if 'approved' in statuses:
-            agg_status = 'approved'
-        elif 'pending' in statuses:
-            agg_status = 'pending'
-        elif 'rejected' in statuses:
-            agg_status = 'rejected'
-        else:
-            agg_status = ','.join(statuses) if statuses else ''
+    for b in Bsrcenters:
+        reg = getattr(b, 'registration', None)
 
-        medicine_names = ', '.join([m['name'] for m in g['medicines']])
+        # determine status string and id
+        try:
+            sid = getattr(b.status, 'id', None) if getattr(b, 'status', None) else None
+            st = STATUS_MAP.get(sid) or (b.status.status_name if getattr(b, 'status', None) else '')
+        except Exception:
+            sid = None
+            st = ''
+
+        # gather medicines for this Bsrcenter row
+        med_list = []
+        med_names = []
+        for bm in b.bsrcenter_meds_set.all():
+            m = getattr(bm, 'medicines', None)
+            med_entry = {
+                'bsrcenter_meds_id': getattr(bm, 'id', None),
+                'medicine_id': getattr(m, 'id', None) if m else None,
+                'medicine_name': getattr(m, 'medicine_name', None) if m else None,
+                'amount': getattr(bm, 'amount', None) or getattr(b, 'amount', None),
+                'date_claimed': str(getattr(bm, 'date_claimed', None)) if getattr(bm, 'date_claimed', None) else (str(getattr(b, 'date_claimed', None)) if getattr(b, 'date_claimed', None) else None),
+                'date_claim_expiry': str(getattr(bm, 'date_claim_expiry', None)) if getattr(bm, 'date_claim_expiry', None) else (str(getattr(b, 'date_claim_expiry', None)) if getattr(b, 'date_claim_expiry', None) else None),
+            }
+            med_list.append(med_entry)
+            if med_entry.get('medicine_name'):
+                med_names.append(med_entry.get('medicine_name'))
+
+        medicine_names = ', '.join(med_names)
+
         data.append({
-            'registration_id': g['registration_id'],
-            'rfid': g['rfid'],
-            'last_name': g['last_name'],
-            'first_name': g['first_name'],
-            'middle_name': g['middle_name'],
-            'name_extension': g['name_extension'],
-            'date_of_birth': g['date_of_birth'],
-            'mobile_no': g['mobile_no'],
-            'gender': g['gender'],
-            'civil_status': g['civil_status'],
-            'occupation': g['occupation'],
-            'email': g['email'],
-            'province': g['province'],
-            'municipality': g['municipality'],
-            'barangay': g['barangay'],
-            'age': g['age'],
-            'amount': g['amounts'][0] if g['amounts'] else None,
+            'id': getattr(b, 'id', None),
+            'registration_id': getattr(b, 'registration_id', None),
+            'rfid': getattr(reg, 'rfid', None) if reg else None,
+            'last_name': getattr(reg, 'last_name', None) if reg else None,
+            'first_name': getattr(reg, 'first_name', None) if reg else None,
+            'middle_name': getattr(reg, 'middle_name', None) if reg else None,
+            'name_extension': getattr(reg, 'name_extension', None) if reg else None,
+            'date_of_birth': getattr(reg, 'date_of_birth', None) if reg else None,
+            'mobile_no': getattr(reg, 'mobile_no', None) if reg else None,
+            'gender': getattr(reg, 'gender', None) if reg else None,
+            'civil_status': getattr(reg, 'civil_status', None) if reg else None,
+            'occupation': getattr(reg, 'occupation', None) if reg else None,
+            'email': getattr(reg, 'email', None) if reg else None,
+            'province': getattr(reg.province, 'province_name', '') if reg and getattr(reg, 'province', None) else (reg.province if reg else ''),
+            'municipality': getattr(reg.municipality, 'municipality_name', '') if reg and getattr(reg, 'municipality', None) else (reg.municipality if reg else ''),
+            'barangay': getattr(reg.barangay, 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+            'age': getattr(b, 'age', None),
+            'amount': getattr(b, 'amount', None),
             'medicine': medicine_names,
-            'medicine_list': g['medicines'],
-            'date_claim_expiry': g['date_claim_expiries'][0] if g['date_claim_expiries'] else None,
-            'date_claim_expiry_list': g['date_claim_expiries'],
-            'status': agg_status,
+            'medicine_list': med_list,
+            'date_claim_expiry': str(getattr(b, 'date_claim_expiry', None)) if getattr(b, 'date_claim_expiry', None) else None,
+            'date_claim_expiry_list': [str(getattr(bm, 'date_claim_expiry', None)) for bm in b.bsrcenter_meds_set.all() if getattr(bm, 'date_claim_expiry', None)] or ([str(getattr(b, 'date_claim_expiry', None))] if getattr(b, 'date_claim_expiry', None) else []),
+            'status': st,
+            'status_id': sid,
         })
 
-    context = {'Bsrcenter_data': data}
-    return render(request,'center_admin/approval_table.html', context)
+    context = {'bsrcenter_data': data}
+    return render(request, 'center_admin/approval_meds_tbl.html', context)
 
 # AJAX endpoint to get Bsrcenter info by id for modal
 @require_GET
@@ -127,57 +124,77 @@ def GET_BSR_CENTER_INFO(request):
     registration_id = request.GET.get('registration_id') or request.GET.get('id')
     if not registration_id:
         return JsonResponse({'error': 'Missing registration_id'}, status=400)
-    entries = Bsrcenter.objects.select_related('registration', 'medicines').filter(registration_id=registration_id)
+
+    entries = (
+        Bsrcenter.objects
+        .select_related('registration', 'status')
+        .prefetch_related('bsrcenter_meds_set__medicines')
+        .filter(registration_id=registration_id)
+    )
     if not entries.exists():
         return JsonResponse({'error': 'Not found'}, status=404)
+
     reg = entries[0].registration
-    # build unique medicines by medicine id to avoid duplicates in the modal
+
     medicines_map = {}
     statuses = set()
+
     for b in entries:
-        m = b.medicines
-        statuses.add(b.status)
-        if not m:
-            # include entries without medicine id using a generated key
-            key = f"_none_{b.id}"
+        # collect status string
+        try:
+            sid = getattr(b.status, 'id', None)
+            if sid == 2:
+                statuses.add('approved')
+            elif sid == 1:
+                statuses.add('pending')
+            elif sid == 3:
+                statuses.add('rejected')
+            else:
+                # fallback to status_name
+                statuses.add(b.status.status_name if b.status else '')
+        except Exception:
+            pass
+
+        # collect medicines for this bsrcenter
+        for bm in b.bsrcenter_meds_set.all():
+            m = bm.medicines
+            if not m:
+                key = f"_none_{bm.id}"
+                if key not in medicines_map:
+                    medicines_map[key] = {
+                        'id': None,
+                        'name': '',
+                        'amount': b.amount,
+                        'date_claimed': str(b.date_claimed) if b.date_claimed else None,
+                        'date_claim_expiry': str(b.date_claim_expiry) if b.date_claim_expiry else None,
+                        'status': (b.status.status_name if b.status else ''),
+                    }
+                continue
+
+            key = str(m.id)
             if key not in medicines_map:
                 medicines_map[key] = {
-                    'id': None,
-                    'name': '',
+                    'id': m.id,
+                    'name': m.medicine_name,
                     'amount': b.amount,
                     'date_claimed': str(b.date_claimed) if b.date_claimed else None,
                     'date_claim_expiry': str(b.date_claim_expiry) if b.date_claim_expiry else None,
-                    'status': b.status,
+                    'status': (b.status.status_name if b.status else ''),
                 }
-            continue
-
-        key = str(m.id)
-        if key not in medicines_map:
-            medicines_map[key] = {
-                'id': m.id,
-                'name': m.medicine_name,
-                'amount': b.amount,
-                'date_claimed': str(b.date_claimed) if b.date_claimed else None,
-                'date_claim_expiry': str(b.date_claim_expiry) if b.date_claim_expiry else None,
-                'status': b.status,
-            }
-        else:
-            # if duplicate medicine appears, prefer earliest expiry (if present) and keep first name/amount
-            existing = medicines_map[key]
-            try:
-                # compare expiries if both present
-                if existing.get('date_claim_expiry') and b.date_claim_expiry:
-                    # choose earliest non-null expiry
-                    if b.date_claim_expiry and str(b.date_claim_expiry) < existing['date_claim_expiry']:
+            else:
+                existing = medicines_map[key]
+                try:
+                    # prefer earliest expiry if present
+                    if existing.get('date_claim_expiry') and b.date_claim_expiry:
+                        if str(b.date_claim_expiry) < existing['date_claim_expiry']:
+                            existing['date_claim_expiry'] = str(b.date_claim_expiry)
+                    elif b.date_claim_expiry and not existing.get('date_claim_expiry'):
                         existing['date_claim_expiry'] = str(b.date_claim_expiry)
-                elif b.date_claim_expiry and not existing.get('date_claim_expiry'):
-                    existing['date_claim_expiry'] = str(b.date_claim_expiry)
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
     medicines = list(medicines_map.values())
 
-    # aggregated status
     if 'approved' in statuses:
         agg_status = 'approved'
     elif 'pending' in statuses:
@@ -185,7 +202,7 @@ def GET_BSR_CENTER_INFO(request):
     elif 'rejected' in statuses:
         agg_status = 'rejected'
     else:
-        agg_status = ','.join(statuses) if statuses else ''
+        agg_status = ','.join([s for s in statuses if s]) if statuses else ''
 
     data = {
         'registration_id': reg.id,
@@ -207,4 +224,55 @@ def GET_BSR_CENTER_INFO(request):
         'status': agg_status,
     }
     return JsonResponse(data)
+
+
+# New endpoint: return all Bsrcenter rows for a registration_id (raw rows + linked medicines)
+@require_GET
+def GET_BSRCENTER_BY_REGISTRATION(request):
+    registration_id = request.GET.get('registration_id') or request.GET.get('id')
+    if not registration_id:
+        return JsonResponse({'error': 'Missing registration_id'}, status=400)
+
+    entries = (
+        Bsrcenter.objects
+        .select_related('registration', 'status')
+        .prefetch_related('bsrcenter_meds_set__medicines')
+        .filter(registration_id=registration_id)
+        .order_by('id')
+    )
+
+    if not entries.exists():
+        return JsonResponse({'error': 'Not found'}, status=404)
+
+    rows = []
+    for b in entries:
+        row = {
+            'id': getattr(b, 'id', None),
+            'registration_id': getattr(b, 'registration_id', None),
+            'tracking_number': getattr(b, 'tracking_number', None),
+            'amount': getattr(b, 'amount', None),
+            'age': getattr(b, 'age', None),
+            'diagnosis': getattr(b, 'diagnosis', None),
+            'date_claimed': str(b.date_claimed) if getattr(b, 'date_claimed', None) else None,
+            'date_claim_expiry': str(b.date_claim_expiry) if getattr(b, 'date_claim_expiry', None) else None,
+            'status_id': getattr(b.status, 'id', None) if getattr(b, 'status', None) else None,
+            'status_name': getattr(b.status, 'status_name', None) if getattr(b, 'status', None) else None,
+        }
+
+        meds = []
+        for bm in b.bsrcenter_meds_set.all():
+            m = getattr(bm, 'medicines', None)
+            meds.append({
+                'bsrcenter_meds_id': getattr(bm, 'id', None),
+                'medicine_id': getattr(m, 'id', None) if m else None,
+                'medicine_name': getattr(m, 'medicine_name', None) if m else None,
+                'amount': getattr(bm, 'amount', None) or getattr(b, 'amount', None),
+                'date_claimed': str(getattr(bm, 'date_claimed', None)) if getattr(bm, 'date_claimed', None) else (str(getattr(b, 'date_claimed', None)) if getattr(b, 'date_claimed', None) else None),
+                'date_claim_expiry': str(getattr(bm, 'date_claim_expiry', None)) if getattr(bm, 'date_claim_expiry', None) else (str(getattr(b, 'date_claim_expiry', None)) if getattr(b, 'date_claim_expiry', None) else None),
+            })
+
+        row['medicines'] = meds
+        rows.append(row)
+
+    return JsonResponse({'entries': rows})
 

@@ -1,0 +1,476 @@
+{% extends "includes/base.html" %}
+{% load static %}
+{% block content %} 
+
+
+<section class="section">
+    <div class="section-header">
+        <h1>Approval</h1>
+    </div>
+    <div class="section-body">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <h4 class="mb-0">Assistance Approval Table</h4>
+                        <div class="ml-3" style="min-width:120px;">
+                            <select id="rowsPerPageSelect" class="form-control form-control-sm">
+                                <option value="5">5 rows</option>
+                                <option value="10" selected>10 rows</option>
+                                <option value="25">25 rows</option>
+                                <option value="50">50 rows</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center" style="gap:8px;">
+                        <div style="min-width:160px;">
+                            <select id="statusFilterSelect" class="form-control form-control-sm">
+                                <option value="all">All statuses</option>
+                                <option value="1">Pending</option>
+                                <option value="2">Approved</option>
+                                <option value="3">Denied</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="max-width: 350px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Search by Last Name or First Name">
+                            <div class="input-group-append">
+                                <button class="btn btn-primary" id="searchBtn" type="button">Search</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0"> 
+                    <div class="table-responsive">
+                        <table id="InformationTable" class="table table-striped table-md">
+                            <thead>
+                                    <tr>
+                                        <th>Last Name</th>
+                                        <th>First Name</th>
+                                        <th>Mobile No</th>
+                                        <th>Barangay</th>
+                                        <th>Medicine</th>
+                                        <th>Date Claim Expiry</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                    {% for row in bsrcenter_data %}
+                                    <tr class="searchable-row" data-status-id="{{ row.status_id }}">
+                                        <td class="search-last-name" data-label="Last Name">{{ row.last_name }}</td>
+                                        <td class="search-first-name" data-label="First Name">{{ row.first_name }}</td>
+                                        <td data-label="Mobile No">{{ row.mobile_no }}</td>
+                                        <td data-label="Barangay">{{ row.barangay }}</td>
+                                        <td data-label="Medicine">{{ row.medicine }}</td>
+                                        <td data-label="Date Claim Expiry">{{ row.date_claim_expiry }}</td>
+                                        <td data-label="Status">
+                                            {% if row.status == 'approved' %}
+                                                <div class="badge badge-success">Approved</div>
+                                            {% elif row.status == 'pending' %}
+                                                <div class="badge badge-warning">Pending</div>
+                                            {% elif row.status == 'rejected' %}
+                                                <div class="badge badge-danger">Rejected</div>
+                                            {% else %}
+                                                <div class="badge badge-secondary">{{ row.status }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td data-label="Action">
+                                            <button type="button" class="btn btn-primary btn-sm view-detail-btn" data-toggle="modal" data-target="#detailModal" 
+                                           data-id="{{ row.registration_id }}">View</button>
+                                            <form method="post" class="approve-form" style="display:inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="registration_id" value="{{ row.registration_id }}">
+                                                <input type="hidden" name="bsrcenter_id" value="{{ row.id }}">
+                                                <input type="hidden" name="target_status" value="2">
+                                                <button type="button" class="btn btn-success btn-sm approve-btn" data-id="{{ row.id }}" data-first="{{ row.first_name }}" data-last="{{ row.last_name }}" {% if row.status == 'approved' %}disabled{% endif %}>Approve</button>
+                                            </form>
+                                            <form method="post" class="reject-form" style="display:inline;margin-left:6px;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="registration_id" value="{{ row.registration_id }}">
+                                                <input type="hidden" name="bsrcenter_id" value="{{ row.id }}">
+                                                <input type="hidden" name="target_status" value="3">
+                                                <button type="button" class="btn btn-danger btn-sm reject-btn" data-id="{{ row.id }}" data-first="{{ row.first_name }}" data-last="{{ row.last_name }}" {% if row.status == 'rejected' %}disabled{% endif %}>Deny</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                            </tbody>
+                        </table>
+                        <nav aria-label="Table pagination" class="d-flex align-items-center justify-content-end" style="gap:12px;">
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary" id="paginationPrev">Prev</button>
+                            </div>
+                            <div class="text-muted small" id="pageInfo">1 / 1</div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary" id="paginationNext">Next</button>
+                            </div>
+                        </nav>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+                <!-- Confirm Approve Modal -->
+                <div class="modal fade" id="confirmApproveModal" tabindex="-1" role="dialog" aria-labelledby="confirmApproveModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="confirmApproveModalLabel">Confirm Approval</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3">
+                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;font-size:1.25rem;">
+                                            <!-- Initials -->
+                                            <span class="confirm-initials"></span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="h5 mb-1 text-primary confirm-name font-weight-bold"></div>
+                                        <div class="text-muted small">This action will mark all assistance records for this registrant as <span class="badge badge-success">Approved</span>.</div>
+                                    </div>
+                                </div>
+                                <hr />
+                                <p class="mb-0">Are you sure you want to approve the assistance for the registrant above?</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-success" id="confirmApproveBtn">Yes, approve</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirm Reject Modal -->
+                <div class="modal fade" id="confirmRejectModal" tabindex="-1" role="dialog" aria-labelledby="confirmRejectModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title" id="confirmRejectModalLabel">Confirm Deny</h5>
+                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3">
+                                        <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;font-size:1.25rem;">
+                                            <!-- Initials -->
+                                            <span class="confirm-reject-initials"></span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="h5 mb-1 text-danger confirm-reject-name font-weight-bold"></div>
+                                        <div class="text-muted small">This action will mark all assistance records for this registrant as <span class="badge badge-danger">Denied</span>.</div>
+                                    </div>
+                                </div>
+                                <hr />
+                                <p class="mb-0">Are you sure you want to deny the assistance for the registrant above?</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-danger" id="confirmRejectBtn">Yes, deny</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    <!-- Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1" role="dialog" aria-labelledby="detailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailModalLabel">Detail Information</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalBodyContent">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-6 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">Last Name</span></div>
+                            <div class="col-6 mb-2"><span id="detail-last-name" style="font-size:1.25em"></span></div>
+                            <div class="col-6 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">First Name</span></div>
+                            <div class="col-6 mb-2"><span id="detail-first-name" style="font-size:1.25em"></span></div>
+                            <div class="col-6 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">Mobile No</span></div>
+                            <div class="col-6 mb-2"><span id="detail-mobile-no" style="font-size:1.25em"></span></div>
+                            <div class="col-6 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">Barangay</span></div>
+                            <div class="col-6 mb-2"><span id="detail-barangay" style="font-size:1.25em"></span></div>
+                            <div class="col-12 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">Medicines</span></div>
+                            <div class="col-12 mb-2" id="detail-medicine-list" style="font-size:1.05em"></div>
+                            <div class="col-6 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">Status</span></div>
+                            <div class="col-6 mb-2"><span id="detail-status" style="font-size:1.25em"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Mobile-friendly stacked table: hide header and show labels before each cell */
+        @media (max-width: 767.98px) {
+            table#InformationTable thead { display: none; }
+            table#InformationTable, table#InformationTable tbody, table#InformationTable tr, table#InformationTable td {
+                display: block;
+                width: 100%;
+            }
+            table#InformationTable tr {
+                margin-bottom: 12px;
+                border: 1px solid #e9ecef;
+                padding: 8px;
+                border-radius: 6px;
+            }
+            table#InformationTable td {
+                padding: 6px 8px;
+                text-align: left;
+            }
+            table#InformationTable td[data-label]::before {
+                content: attr(data-label) ": ";
+                font-weight: 600;
+                display: inline-block;
+                width: 45%;
+            }
+            table#InformationTable td[data-label="Action"] .btn {
+                display: block;
+                width: 100%;
+                margin-bottom: 6px;
+            }
+            .card-header .d-flex { flex-wrap: wrap; gap: 8px; }
+            nav[aria-label="Table pagination"] { justify-content: center; padding: 8px 0; }
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pagination variables
+            let rowsPerPage = 10;
+            let currentPage = 1;
+            // keep a master list of all row elements (they'll be moved into the table body for each page)
+            const allRows = Array.from(document.querySelectorAll('.searchable-row'));
+            let filteredRows = allRows.slice();
+
+            // Pagination rendering
+            function renderTablePage(page) {
+                const tableBody = document.getElementById('tableBody');
+                tableBody.innerHTML = '';
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+                filteredRows.slice(start, end).forEach(row => {
+                    tableBody.appendChild(row);
+                });
+                renderPagination(page);
+            }
+
+            function renderPagination(page) {
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+                const info = document.getElementById('pageInfo');
+                const prevBtn = document.getElementById('paginationPrev');
+                const nextBtn = document.getElementById('paginationNext');
+                // show as "current / total" to match previous assistance design
+                if (info) info.textContent = page + ' / ' + totalPages;
+                // enable/disable
+                if (prevBtn) prevBtn.disabled = page <= 1;
+                if (nextBtn) nextBtn.disabled = page >= totalPages;
+            }
+
+            // Search + status filter functionality
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            let statusFilter = 'all'; // 'all' or '1'|'2'|'3'
+
+            function filterRows() {
+                const query = searchInput.value.trim().toLowerCase();
+                // filter from the master list (allRows) so search covers all entries, not just the current page
+                filteredRows = allRows.filter(function(row) {
+                    const lastEl = row.querySelector('.search-last-name');
+                    const firstEl = row.querySelector('.search-first-name');
+                    const lastName = lastEl ? lastEl.textContent.toLowerCase() : '';
+                    const firstName = firstEl ? firstEl.textContent.toLowerCase() : '';
+
+                    // text match
+                    const textMatch = (lastName.includes(query) || firstName.includes(query) || query === '');
+
+                    // status match
+                    if (statusFilter === 'all') return textMatch;
+                    const rowStatus = row.getAttribute('data-status-id');
+                    // rowStatus may be empty/null; convert to string
+                    return textMatch && String(rowStatus) === String(statusFilter);
+                });
+                currentPage = 1;
+                renderTablePage(currentPage);
+            }
+
+            // wire search inputs
+            searchBtn.addEventListener('click', filterRows);
+            searchInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') filterRows();
+            });
+
+            // rows per page selector
+            const rowsPerPageSelect = document.getElementById('rowsPerPageSelect');
+            if (rowsPerPageSelect) {
+                rowsPerPage = parseInt(rowsPerPageSelect.value, 10) || rowsPerPage;
+                rowsPerPageSelect.addEventListener('change', function() {
+                    rowsPerPage = parseInt(rowsPerPageSelect.value, 10) || rowsPerPage;
+                    currentPage = 1;
+                    filterRows();
+                });
+            }
+
+            // status filter dropdown
+            const statusSelect = document.getElementById('statusFilterSelect');
+            if (statusSelect) {
+                statusSelect.addEventListener('change', function() {
+                    statusFilter = statusSelect.value || 'all';
+                    filterRows();
+                });
+            }
+
+            // Prev / Next wiring
+            const prevBtn = document.getElementById('paginationPrev');
+            const nextBtn = document.getElementById('paginationNext');
+            if (prevBtn) prevBtn.addEventListener('click', function() {
+                window.currentPage = Math.max(1, (currentPage || 1) - 1);
+                currentPage = window.currentPage;
+                renderTablePage(currentPage);
+            });
+            if (nextBtn) nextBtn.addEventListener('click', function() {
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+                window.currentPage = Math.min(totalPages, (currentPage || 1) + 1);
+                currentPage = window.currentPage;
+                renderTablePage(currentPage);
+            });
+
+            // Initial render
+            renderTablePage(currentPage);
+
+            // Detail modal functionality
+            const buttons = document.querySelectorAll('.view-detail-btn');
+            buttons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const bsrcenterId = btn.getAttribute('data-id');
+                    // Show loading indicator
+                    // show loading
+                    ['rfid','last-name','first-name','mobile-no','detail-medicine-list','detail-status'].forEach(id => {
+                        const el = document.getElementById('detail-' + id.replace(/-/g, '-')) || document.getElementById(id);
+                        if (el) el.textContent = 'Loading...';
+                    });
+                    fetch(`/centeradmin/get_bsr_center_info?registration_id=${bsrcenterId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                document.getElementById('modalBodyContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                            } else {
+                                // basic fields
+                                const map = {
+                                    'rfid': 'detail-rfid',
+                                    'last_name': 'detail-last-name',
+                                    'first_name': 'detail-first-name',
+                                    'mobile_no': 'detail-mobile-no',
+                                    'status': 'detail-status'
+                                };
+                                Object.keys(map).forEach(k => {
+                                    const el = document.getElementById(map[k]);
+                                    if (el) el.textContent = data[k] || '';
+                                });
+
+                                // medicines list
+                                const medContainer = document.getElementById('detail-medicine-list');
+                                medContainer.innerHTML = '';
+                                if (Array.isArray(data.medicines) && data.medicines.length) {
+                                    const ul = document.createElement('ul');
+                                    data.medicines.forEach(m => {
+                                        const li = document.createElement('li');
+                                        li.textContent = m.name + (m.date_claim_expiry ? ` — Expiry: ${m.date_claim_expiry}` : '');
+                                        ul.appendChild(li);
+                                    });
+                                    medContainer.appendChild(ul);
+                                } else {
+                                    medContainer.textContent = 'No medicines found.';
+                                }
+                            }
+                        })
+                        .catch(() => {
+                            document.getElementById('modalBodyContent').innerHTML = '<div class="alert alert-danger">Failed to load details.</div>';
+                        });
+                });
+            });
+
+            // Approve confirmation modal logic
+            let pendingForm = null;
+            const confirmModal = document.getElementById('confirmApproveModal');
+            const confirmApproveBtn = document.getElementById('confirmApproveBtn');
+            document.querySelectorAll('.approve-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const regId = btn.getAttribute('data-id');
+                    const first = btn.getAttribute('data-first') || '';
+                    const last = btn.getAttribute('data-last') || '';
+                    // find parent form for submission
+                    pendingForm = btn.closest('form');
+                    // set name and initials in modal display
+                    const nameEl = confirmModal.querySelector('.confirm-name');
+                    const initialsEl = confirmModal.querySelector('.confirm-initials');
+                    if (nameEl) nameEl.textContent = `${first} ${last}`.trim();
+                    if (initialsEl) {
+                        const fi = (first && first[0]) ? first[0].toUpperCase() : '';
+                        const li = (last && last[0]) ? last[0].toUpperCase() : '';
+                        initialsEl.textContent = (fi + li) || '?';
+                    }
+                    // show modal via Bootstrap jQuery (most projects include it)
+                    $('#confirmApproveModal').modal('show');
+                });
+            });
+
+            if (confirmApproveBtn) {
+                confirmApproveBtn.addEventListener('click', function() {
+                    if (pendingForm) {
+                        // submit the form
+                        pendingForm.submit();
+                        // hide modal
+                        $('#confirmApproveModal').modal('hide');
+                        pendingForm = null;
+                    }
+                });
+            }
+
+            // Reject / Deny confirmation handling
+            const confirmRejectModal = document.getElementById('confirmRejectModal');
+            const confirmRejectBtn = document.getElementById('confirmRejectBtn');
+            document.querySelectorAll('.reject-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const first = btn.getAttribute('data-first') || '';
+                    const last = btn.getAttribute('data-last') || '';
+                    // find parent form for submission
+                    pendingForm = btn.closest('form');
+                    // set name and initials in reject modal display
+                    const nameEl = confirmRejectModal.querySelector('.confirm-reject-name');
+                    const initialsEl = confirmRejectModal.querySelector('.confirm-reject-initials');
+                    if (nameEl) nameEl.textContent = `${first} ${last}`.trim();
+                    if (initialsEl) {
+                        const fi = (first && first[0]) ? first[0].toUpperCase() : '';
+                        const li = (last && last[0]) ? last[0].toUpperCase() : '';
+                        initialsEl.textContent = (fi + li) || '?';
+                    }
+                    $('#confirmRejectModal').modal('show');
+                });
+            });
+
+            if (confirmRejectBtn) {
+                confirmRejectBtn.addEventListener('click', function() {
+                    if (pendingForm) {
+                        pendingForm.submit();
+                        $('#confirmRejectModal').modal('hide');
+                        pendingForm = null;
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}
