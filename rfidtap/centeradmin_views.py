@@ -12,7 +12,7 @@ from app.models import CustomUser, Registration, RfidAuth, Province, Municipalit
 def home(request):
     return render(request,'center_admin/home.html')
 
-def APPROVAL_TABLE(request):
+def APPROVAL_TABLE_MEDS(request):
     """
     Build approval table using Bsrcenter and related Bsrcenter_meds and Status.
 
@@ -120,7 +120,7 @@ def APPROVAL_TABLE(request):
 
 # AJAX endpoint to get Bsrcenter info by id for modal
 @require_GET
-def GET_BSR_CENTER_INFO(request):
+def GET_BSR_CENTER_INFO_MEDS(request):
     registration_id = request.GET.get('registration_id') or request.GET.get('id')
     if not registration_id:
         return JsonResponse({'error': 'Missing registration_id'}, status=400)
@@ -226,17 +226,82 @@ def GET_BSR_CENTER_INFO(request):
     return JsonResponse(data)
 
 
-# New endpoint: return all Bsrcenter rows for a registration_id (raw rows + linked medicines)
+def APPROVAL_TABLE_BURIALS(request):
+    """
+    Show approval table for burials using Bsrcenter_Burial rows.
+
+    - POST supports `bsrcenter_id` to approve/reject a single burial row, or falls back to one row by registration_id.
+    - Renders `center_admin/approval_burial_tbl.html` with `bsrcenter_data` list.
+    """
+    STATUS_MAP = {1: 'pending', 2: 'approved', 3: 'rejected'}
+
+    if request.method == 'POST':
+        bsrcenter_id = request.POST.get('bsrcenter_id')
+        registration_id = request.POST.get('registration_id') or request.POST.get('id')
+        try:
+            target_status = int(request.POST.get('target_status') or 2)
+        except Exception:
+            target_status = 2
+
+        try:
+            if bsrcenter_id:
+                Bsrcenter_Burial.objects.filter(id=bsrcenter_id).update(status_id=target_status)
+            elif registration_id:
+                one = Bsrcenter_Burial.objects.filter(registration_id=registration_id).order_by('id').first()
+                if one:
+                    Bsrcenter_Burial.objects.filter(id=one.id).update(status_id=target_status)
+        except Exception:
+            pass
+        return redirect(request.path)
+
+    # Fetch burial rows
+    rows = (
+        Bsrcenter_Burial.objects
+        .select_related('registration', 'status')
+        .all()
+        .order_by('id')
+    )
+
+    data = []
+    for r in rows:
+        reg = getattr(r, 'registration', None)
+        try:
+            sid = getattr(r.status, 'id', None) if getattr(r, 'status', None) else None
+            st = STATUS_MAP.get(sid) or (r.status.status_name if getattr(r, 'status', None) else '')
+        except Exception:
+            sid = None
+            st = ''
+
+        data.append({
+            'id': getattr(r, 'id', None),
+            'registration_id': getattr(r, 'registration_id', None),
+            'last_name': getattr(reg, 'last_name', None) if reg else None,
+            'first_name': getattr(reg, 'first_name', None) if reg else None,
+            'mobile_no': getattr(reg, 'mobile_no', None) if reg else None,
+            'barangay': getattr(reg.barangay, 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+            'deceased_name': getattr(r, 'deceased_name', None),
+            'relation': getattr(r, 'relation', None),
+            'amount': getattr(r, 'amount', None),
+            'date_claim_expiry': str(getattr(r, 'date_claim_expiry', None)) if getattr(r, 'date_claim_expiry', None) else None,
+            'status': st,
+            'status_id': sid,
+        })
+
+    return render(request, 'center_admin/approval_burial_tbl.html', {'bsrcenter_data': data})
+
+
 @require_GET
-def GET_BSRCENTER_BY_REGISTRATION(request):
+def GET_BSR_CENTER_INFO_BURIALS(request):
+    """
+    AJAX GET endpoint: return all Bsrcenter_Burial rows for a registration_id.
+    """
     registration_id = request.GET.get('registration_id') or request.GET.get('id')
     if not registration_id:
         return JsonResponse({'error': 'Missing registration_id'}, status=400)
 
     entries = (
-        Bsrcenter.objects
+        Bsrcenter_Burial.objects
         .select_related('registration', 'status')
-        .prefetch_related('bsrcenter_meds_set__medicines')
         .filter(registration_id=registration_id)
         .order_by('id')
     )
@@ -244,35 +309,54 @@ def GET_BSRCENTER_BY_REGISTRATION(request):
     if not entries.exists():
         return JsonResponse({'error': 'Not found'}, status=404)
 
+    reg = entries[0].registration
+
     rows = []
-    for b in entries:
-        row = {
-            'id': getattr(b, 'id', None),
-            'registration_id': getattr(b, 'registration_id', None),
-            'tracking_number': getattr(b, 'tracking_number', None),
-            'amount': getattr(b, 'amount', None),
-            'age': getattr(b, 'age', None),
-            'diagnosis': getattr(b, 'diagnosis', None),
-            'date_claimed': str(b.date_claimed) if getattr(b, 'date_claimed', None) else None,
-            'date_claim_expiry': str(b.date_claim_expiry) if getattr(b, 'date_claim_expiry', None) else None,
-            'status_id': getattr(b.status, 'id', None) if getattr(b, 'status', None) else None,
-            'status_name': getattr(b.status, 'status_name', None) if getattr(b, 'status', None) else None,
-        }
+    statuses = set()
+    for e in entries:
+        sid = getattr(e.status, 'id', None) if getattr(e, 'status', None) else None
+        if sid == 2:
+            statuses.add('approved')
+        elif sid == 1:
+            statuses.add('pending')
+        elif sid == 3:
+            statuses.add('rejected')
+        else:
+            if getattr(e, 'status', None):
+                statuses.add(e.status.status_name)
 
-        meds = []
-        for bm in b.bsrcenter_meds_set.all():
-            m = getattr(bm, 'medicines', None)
-            meds.append({
-                'bsrcenter_meds_id': getattr(bm, 'id', None),
-                'medicine_id': getattr(m, 'id', None) if m else None,
-                'medicine_name': getattr(m, 'medicine_name', None) if m else None,
-                'amount': getattr(bm, 'amount', None) or getattr(b, 'amount', None),
-                'date_claimed': str(getattr(bm, 'date_claimed', None)) if getattr(bm, 'date_claimed', None) else (str(getattr(b, 'date_claimed', None)) if getattr(b, 'date_claimed', None) else None),
-                'date_claim_expiry': str(getattr(bm, 'date_claim_expiry', None)) if getattr(bm, 'date_claim_expiry', None) else (str(getattr(b, 'date_claim_expiry', None)) if getattr(b, 'date_claim_expiry', None) else None),
-            })
+        rows.append({
+            'id': getattr(e, 'id', None),
+            'registration_id': getattr(e, 'registration_id', None),
+            'deceased_name': getattr(e, 'deceased_name', None),
+            'relationship': getattr(e, 'relationship', None),
+            'amount': getattr(e, 'amount', None),
+            'date_claimed': str(getattr(e, 'date_claimed', None)) if getattr(e, 'date_claimed', None) else None,
+            'date_claim_expiry': str(getattr(e, 'date_claim_expiry', None)) if getattr(e, 'date_claim_expiry', None) else None,
+            'cause_of_death': getattr(e, 'cause_of_death', None),
+            'status_id': sid,
+            'status_name': getattr(e.status, 'status_name', None) if getattr(e, 'status', None) else None,
+        })
 
-        row['medicines'] = meds
-        rows.append(row)
+    if 'approved' in statuses:
+        agg_status = 'approved'
+    elif 'pending' in statuses:
+        agg_status = 'pending'
+    elif 'rejected' in statuses:
+        agg_status = 'rejected'
+    else:
+        agg_status = ','.join([s for s in statuses if s]) if statuses else ''
 
-    return JsonResponse({'entries': rows})
+    data = {
+        'registration_id': reg.id,
+        'last_name': reg.last_name,
+        'first_name': reg.first_name,
+        'mobile_no': getattr(reg, 'mobile_no', None),
+        'barangay': getattr(reg.barangay, 'barangay_name', '') if getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+        'deceased_rows': rows,
+        'status': agg_status,
+    }
+    return JsonResponse(data)
+
+
 

@@ -46,8 +46,10 @@ urlpatterns = [
     
     #center admin
     path('admincenter/home', centeradmin_views.home, name='admincenter_home'),
-    path('admincenter/approval_table', centeradmin_views.APPROVAL_TABLE, name='approval_table'),
-    path('centeradmin/get_bsr_center_info', centeradmin_views.GET_BSR_CENTER_INFO, name='get_bsr_center_info'),
+    path('admincenter/approval_table_meds', centeradmin_views.APPROVAL_TABLE_MEDS, name='approval_table_meds'),
+    path('admincenter/get_bsr_center_info_meds', centeradmin_views.GET_BSR_CENTER_INFO_MEDS, name='get_bsr_center_info_meds'),
+    path('admincenter/approval_table_burials', centeradmin_views.APPROVAL_TABLE_BURIALS, name='approval_table_burials'),
+    path('admincenter/get_bsr_center_info_burials', centeradmin_views.GET_BSR_CENTER_INFO_BURIALS, name='get_bsr_center_info_burials'),
     
     
     #center staff
