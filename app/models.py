@@ -12,11 +12,34 @@ class CustomUser(AbstractUser):
         ('5', 'centerstaff'),
         ('6', 'adminpeso'),
         ('7', 'pesostaff'),
+        ('8', 'module1' ),
     )
     user_type = models.CharField(choices=USER, max_length=25)
     profile_pic = models.ImageField(upload_to='profile_pic/')
     email = models.EmailField(max_length=150, unique=True)
     
+
+class Semester(models.Model):
+    sem_name = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.sem_name 
+
+class Academic_year(models.Model):
+    year = models.DateField(unique=True)
+    is_active = models.BooleanField(default=False)
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE, blank=True, null=True)
+
+    def __str__(self):
+        return str(self.year)
+
+
+    
+class End_user_type(models.Model):
+    end_user_type = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.end_user_type
  
 class RfidAuth(models.Model):
     STATUS_CHOICES = (
@@ -86,6 +109,7 @@ class Registration(models.Model):
     profile_pic = models.ImageField(upload_to='profiles/', blank=True, null=True)
     age = models.IntegerField(default=0)
     zone_street = models.CharField(max_length=200, blank=True, null=True)
+    end_user_type = models.ForeignKey(End_user_type, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return f"{self.last_name}, {self.first_name} {self.middle_name or ''}".strip()
@@ -151,6 +175,12 @@ class Bsrcenter_Burial(models.Model):
             parts.append(f"processed by {p_name}")
         return ' - '.join(parts)
 
+class Reap_type(models.Model):
+    type_name = models.CharField(max_length=255)
+    
+    def __str__(self):
+        return f"{self.type_name}"
+
 class Peso_reap(models.Model):
     tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
@@ -164,8 +194,9 @@ class Peso_reap(models.Model):
     date_added = models.DateField(auto_now_add=True, blank=True, null=True)
     is_released = models.BooleanField(default=False)
     status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
-    date_claimed = models.DateField(auto_now_add=True, blank=True, null=True)
-    date_claim_expiry = models.DateField(blank=True, null=True)
+    Academic_year = models.ForeignKey(Academic_year, on_delete=models.CASCADE, blank=True, null=True)
+    reap_type = models.ForeignKey(Reap_type, on_delete=models.CASCADE, blank=True, null=True)
+    next = models.BooleanField(default=False)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]

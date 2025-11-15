@@ -30,5 +30,8 @@ admin.site.register(Bsrcenter_meds)
 admin.site.register(Peso_reap)
 admin.site.register(Peso_tupad)
 admin.site.register(Skills_training)
+admin.site.register(Academic_year)
+admin.site.register(Semester)
+admin.site.register(End_user_type)
 admin.site.site_title = "RFID TAP Admin Portal"
 admin.site.site_header = "RFID TAP Admin"

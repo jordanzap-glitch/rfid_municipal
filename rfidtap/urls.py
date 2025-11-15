@@ -36,6 +36,8 @@ urlpatterns = [
     path('sysadmin/home', sysadmin_views.home, name='sysadmin_home'),
     # show registration form
     path('sysadmin/register', sysadmin_views.REGISTRATION_MEMBER, name='sysadmin_register'),
+    path('sysadmin/cycle', sysadmin_views.CYCLE_CREATE, name='sysadmin_cycle_create'),
+    path('sysadmin/cycle/activate/<int:ay_id>/', sysadmin_views.CYCLE_ACTIVATE, name='sysadmin_cycle_activate'),
     # ajax
     path('ajax/municipalities/', sysadmin_views.get_municipalities, name='ajax_municipalities'),
     path('ajax/barangays/', sysadmin_views.get_barangays, name='ajax_barangays'),
@@ -66,7 +68,10 @@ urlpatterns = [
     #peso staff
     path('pesostaff/home', pesostaff_views.home, name='pesostaff_home'),
     path('pesostaff/reap_form', pesostaff_views.REAP_FORM, name='reap_form'),
+    path('pesostaff/reap_release', pesostaff_views.REAP_RELEASE, name='reap_release'),
+    path('pesostaff/release_reap/', pesostaff_views.RELEASE_REAP, name='release_reap'),
     path('pesostaff/tupad_form', pesostaff_views.TUPAD_FORM, name='tupad_form'),
     path('get/registration_reap/<str:rfid>/', pesostaff_views.GET_REGISTRATION_REAP, name='get_registration_reap'),
-    path('get/registration_tupad/<str:rfid>/', pesostaff_views.GET_REGISTRATION_TUPAD, name='get_registration_tupad'),
+    path('get/registration_tupad/<str:rfid>/', pesostaff_views.GET_REGISTRATION_TUPAD, name='get_registration_tupad'),  
+    
 ]+ static(settings.MEDIA_URL,document_root = settings.MEDIA_ROOT)

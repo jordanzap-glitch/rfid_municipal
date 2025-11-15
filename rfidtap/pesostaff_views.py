@@ -1,4 +1,4 @@
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render,redirect, HttpResponse, get_object_or_404
 from django.contrib.auth import authenticate, logout, login, get_user_model
 from django.contrib import messages
@@ -7,10 +7,11 @@ from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Peso_reap, Skills_training, Peso_tupad
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Peso_reap, Skills_training, Peso_tupad, Academic_year, Reap_type
 from django.views.decorators.csrf import csrf_exempt
 from datetime import date, datetime as _dt
 from decimal import Decimal, InvalidOperation
+import json
 
 
 def home(request):
@@ -22,6 +23,12 @@ def REAP_FORM(request):
     GET: render the form.
     POST: validate RFID, check for existing unreleased REAP and create a new Peso_reap record.
     """
+    # get currently active academic year (with semester) for display
+    active_ay = Academic_year.objects.select_related('semester').filter(is_active=True).first()
+
+    # fetch available reap types for the template
+    reap_types = Reap_type.objects.all()
+
     if request.method == 'POST':
         rfid = request.POST.get('rfid')
         # document checkboxes
@@ -31,27 +38,71 @@ def REAP_FORM(request):
         official_receipt = bool(request.POST.get('official_receipt'))
         barangay_indigency = bool(request.POST.get('barangay_indigency'))
         barangay_recidency = bool(request.POST.get('barangay_recidency'))
-        # optional date fields from the assistance form
-        date_claimed = request.POST.get('date_claimed')
-        date_claim_expiry = request.POST.get('date_claim_expiry')
+        # (date fields removed) no longer accept date_claimed/date_claim_expiry from form
+
+        # reap type selection (optional) - read raw then normalize
+        reap_type_raw = request.POST.get('reap_type')
+        reap_type_id = None
+        if reap_type_raw:
+            try:
+                rid = int(reap_type_raw)
+                if Reap_type.objects.filter(id=rid).exists():
+                    reap_type_id = rid
+            except (ValueError, TypeError):
+                reap_type_id = None
 
         try:
             registration = Registration.objects.get(rfid=rfid)
         except Registration.DoesNotExist:
             messages.error(request, 'Registration not found for RFID.')
-            return render(request, 'peso_staff/reap_form.html')
+            reap_type_display = ''
+            if reap_type_raw:
+                try:
+                    reap_type_display = Reap_type.objects.filter(id=reap_type_raw).values_list('type_name', flat=True).first() or ''
+                except Exception:
+                    reap_type_display = ''
+            return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types, 'selected_reap_type': reap_type_raw, 'reap_type_display': reap_type_display})
+
+        # If no reap_type selected, choose default based on previous assistance: New if none, Renew if exists
+        if not reap_type_id:
+            try:
+                prev_exists = Peso_reap.objects.filter(registration=registration).exists()
+                desired = 'New' if not prev_exists else 'Renew'
+                rt = Reap_type.objects.filter(type_name__iexact=desired).first()
+                if not rt:
+                    rt = Reap_type.objects.filter(type_name__icontains=desired).first()
+                if rt:
+                    reap_type_id = rt.id
+                    reap_type_raw = str(rt.id)
+            except Exception:
+                pass
+
+        # compute display name for template context
+        reap_type_display = ''
+        if reap_type_id:
+            try:
+                reap_type_display = Reap_type.objects.filter(id=reap_type_id).values_list('type_name', flat=True).first() or ''
+            except Exception:
+                reap_type_display = ''
 
         # Prevent creating another REAP when there is an active assistance:
-        # - a REAP that is not yet released (is_released == False), OR
-        # - a pending/approved REAP (status 1 or 2) whose expiry is null or not yet passed.
-        today = date.today()
-        active_reap_exists = Peso_reap.objects.filter(registration=registration).filter(
-            Q(is_released=False) |
-            (Q(status_id__in=[1, 2]) & (Q(date_claim_expiry__isnull=True) | Q(date_claim_expiry__gte=today)))
-        ).exists()
-        if active_reap_exists:
-            messages.error(request, 'Cannot save REAP: there is an existing active REAP (pending/approved or not released).')
-            return render(request, 'peso_staff/reap_form.html')
+        # Rules:
+        # - Always block if there is an unreleased REAP (is_released == False).
+        # - If there is an active academic year, block if there's an existing REAP
+        #   in that same academic year with status == 1 (pending).
+        # - Allow submission if the existing REAP in the same AY has status 2 (approved)
+        #   or 3 (rejected) so the user can resubmit.
+        # Check unreleased first
+        if Peso_reap.objects.filter(registration=registration, is_released=False).exists():
+            messages.error(request, 'Cannot save REAP: there is an unreleased REAP for this registration.')
+            return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
+
+        # If there's an active academic year, check for pending (status=1) submissions
+        if active_ay:
+            pending_same_ay = Peso_reap.objects.filter(registration=registration, Academic_year=active_ay, status_id=1).exists()
+            if pending_same_ay:
+                messages.error(request, 'Cannot save REAP: a pending REAP already exists for the active academic year.')
+                return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
 
         # Create the Peso_reap record
         from django.db import transaction, IntegrityError
@@ -69,21 +120,7 @@ def REAP_FORM(request):
                 while Peso_reap.objects.filter(tracking_number=tracking).exists():
                     tracking = _gen_tracking()
 
-                # parse provided dates (if any) to date objects
-                date_claimed_obj = None
-                if date_claimed:
-                    try:
-                        date_claimed_obj = _dt.strptime(date_claimed, '%Y-%m-%d').date()
-                    except Exception:
-                        date_claimed_obj = None
-
-                date_claim_expiry_obj = None
-                if date_claim_expiry:
-                    try:
-                        date_claim_expiry_obj = _dt.strptime(date_claim_expiry, '%Y-%m-%d').date()
-                    except Exception:
-                        date_claim_expiry_obj = None
-
+                # create record (date fields removed)
                 reap = Peso_reap.objects.create(
                     registration=registration,
                     tracking_number=tracking,
@@ -94,9 +131,13 @@ def REAP_FORM(request):
                     barangay_recidency=barangay_recidency,
                     official_receipt=official_receipt,
                     processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
-                    date_claimed=date_claimed_obj if date_claimed_obj else None,
-                    date_claim_expiry=date_claim_expiry_obj if date_claim_expiry_obj else None,
+                    # date_claimed/date_claim_expiry intentionally omitted
+                    # attach the active academic year if available (use server-side active_ay for safety)
+                    Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
+                    reap_type_id=(reap_type_id or None),
                 )
+                # Mark previous assistance records for this registration as having a "next" (there is a newer assistance)
+                Peso_reap.objects.filter(registration=registration).exclude(pk=reap.pk).update(next=True)
         except IntegrityError:
             messages.error(request, 'Database error while saving REAP.')
 
@@ -114,19 +155,19 @@ def REAP_FORM(request):
                 'official_receipt': reap.official_receipt,
                 'barangay_indigency': reap.barangay_indigency,
                 'barangay_recidency': reap.barangay_recidency,
-                    'date_claimed': reap.date_claimed.strftime('%Y-%m-%d') if getattr(reap, 'date_claimed', None) else '',
-                    'date_claim_expiry': reap.date_claim_expiry.strftime('%Y-%m-%d') if getattr(reap, 'date_claim_expiry', None) else '',
+                # include academic year display for modal/print
+                'academic_year': ((reap.Academic_year.year.strftime('%Y') if getattr(reap.Academic_year, 'year', None) else '') + (f" ({reap.Academic_year.semester.sem_name})" if getattr(reap.Academic_year, 'semester', None) else "")) if getattr(reap, 'Academic_year', None) else '',
             }
             return redirect('reap_form')
 
-        return render(request, 'peso_staff/reap_form.html')
+            return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
 
     # GET
     # Pop recent_reap to show once if template uses it
     recent_reap = None
     if request.method != 'POST':
         recent_reap = request.session.pop('recent_reap', None)
-    return render(request,'peso_staff/reap_form.html', {'recent_reap': recent_reap})
+    return render(request,'peso_staff/reap_form.html', {'recent_reap': recent_reap, 'active_ay': active_ay, 'reap_types': reap_types})
 
 def TUPAD_FORM(request):
     skills = Skills_training.objects.all()
@@ -261,6 +302,17 @@ def TUPAD_FORM(request):
         recent_tupad = request.session.pop('recent_tupad', None)
     return render(request, 'peso_staff/tupad_form.html', {'recent_tupad': recent_tupad, 'skills': skills})
 
+
+def REAP_RELEASE(request):
+    """Standalone REAP release page.
+
+    Renders a minimal page (does NOT extend base.html). The page contains
+    a single RFID input that, when filled (RFID tap), will call the
+    existing `GET_REGISTRATION_REAP` endpoint and populate a simple
+    release card/modal with registration and REAP details.
+    """
+    return render(request, 'peso_staff/reap_release.html')
+
 @require_GET
 @csrf_exempt
 def GET_REGISTRATION_REAP(request, rfid):
@@ -291,6 +343,21 @@ def GET_REGISTRATION_REAP(request, rfid):
         prev_qs = Peso_reap.objects.filter(registration=reg).order_by('-id')
         prev_list = []
         for prev in prev_qs:
+            # Build academic year display using the single `year` DateField (show year only)
+            ay_display = ''
+            ay_year_str = ''
+            ay_sem = ''
+            if getattr(prev, 'Academic_year', None):
+                ay_obj = prev.Academic_year
+                if getattr(ay_obj, 'year', None):
+                    try:
+                        ay_year_str = ay_obj.year.strftime('%Y')
+                    except Exception:
+                        # fallback if year is stored as string
+                        ay_year_str = str(ay_obj.year)
+                ay_sem = ay_obj.semester.sem_name if getattr(ay_obj, 'semester', None) else ''
+                ay_display = (ay_year_str + (f" ({ay_sem})" if ay_sem else ''))
+
             prev_list.append({
                 'tracking_number': prev.tracking_number if hasattr(prev, 'tracking_number') else '',
                 'biodata': bool(prev.biodata),
@@ -300,15 +367,66 @@ def GET_REGISTRATION_REAP(request, rfid):
                 'barangay_indigency': bool(prev.barangay_indigency),
                 'barangay_recidency': bool(prev.barangay_recidency),
                 'date_added': prev.date_added.strftime('%Y-%m-%d') if getattr(prev, 'date_added', None) else '',
-                'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if getattr(prev, 'date_claimed', None) else '',
-                'date_claim_expiry': prev.date_claim_expiry.strftime('%Y-%m-%d') if getattr(prev, 'date_claim_expiry', None) else '',
+                'academic_year': ay_display,
+                'academic_year_id': prev.Academic_year.id if getattr(prev, 'Academic_year', None) else None,
+                'academic_year_start': ay_year_str,
+                'academic_year_end': ay_year_str,
+                'academic_year_semester': ay_sem,
+                'id': prev.id,
                 'is_released': bool(prev.is_released) if hasattr(prev, 'is_released') else False,
+                'next': bool(prev.next) if hasattr(prev, 'next') else False,
             })
         data['previous_reap_assistance'] = prev_list
 
         return JsonResponse(data)
     except Registration.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
+
+
+@require_POST
+@login_required
+def RELEASE_REAP(request):
+    """Handle REAP release POST: expects JSON {tracking: <tracking_number>} or {id: <reap_id>}.
+
+    Marks Peso_reap.is_released = True for the matching record.
+    Returns JSON success or error status.
+    """
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid_json'}, status=400)
+
+    tracking = payload.get('tracking')
+    reap_id = payload.get('id')
+
+    if not tracking and not reap_id:
+        # allow academic_year_id + rfid as alternative identifier
+        academic_year_id = payload.get('academic_year_id')
+        rfid = payload.get('rfid')
+        if not (academic_year_id and rfid):
+            return JsonResponse({'error': 'missing_identifier'}, status=400)
+
+    reap = None
+    try:
+        if reap_id:
+            reap = Peso_reap.objects.get(pk=reap_id)
+        elif tracking:
+            reap = Peso_reap.objects.get(tracking_number=tracking)
+        else:
+            # find by registration RFID + academic_year_id
+            reg = Registration.objects.get(rfid=rfid)
+            reap = Peso_reap.objects.get(registration=reg, Academic_year_id=academic_year_id)
+    except (Peso_reap.DoesNotExist, Registration.DoesNotExist):
+        return JsonResponse({'error': 'not_found'}, status=404)
+
+    if getattr(reap, 'is_released', False):
+        return JsonResponse({'error': 'already_released'}, status=400)
+
+    reap.is_released = True
+    reap.processed_by_id = request.user.id if request.user and request.user.is_authenticated else reap.processed_by_id
+    reap.save()
+
+    return JsonResponse({'success': True})
 
 
 @require_GET

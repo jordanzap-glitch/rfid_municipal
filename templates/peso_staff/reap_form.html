@@ -17,6 +17,11 @@
             <div class="col-12 col-md-10 col-lg-8 mx-auto">
                 <form id="assistanceForm" method="post" enctype="multipart/form-data" class="card" action="{% url 'reap_form' %}">
                     {% csrf_token %}
+                    {% if active_ay %}
+                        <input type="hidden" name="academic_year_id" id="academic_year_id" value="{{ active_ay.id }}" />
+                    {% else %}
+                        <input type="hidden" name="academic_year_id" id="academic_year_id" value="" />
+                    {% endif %}
                     <div class="card-header">
                         <h4>Registration Information</h4>
                     </div>
@@ -137,6 +142,12 @@
                                     <input class="form-check-input" type="checkbox" name="official_receipt" id="official_receipt" style="transform: scale(1.45); margin-right: 10px;" required />
                                     <label class="form-check-label" for="official_receipt" style="vertical-align: middle; font-size:1.15rem;">Official Receipt</label>
                                 </div>
+                                <div class="form-group mt-2">
+                                    <label for="reap_type_display" class="small">REAP Type</label>
+                                    <!-- Readonly display for REAP type. Hidden input carries the actual value (empty = let server decide). -->
+                                    <input type="text" id="reap_type_display" class="form-control form-control-sm" style="max-width:220px;" readonly value="" />
+                                    <input type="hidden" name="reap_type" id="reap_type" value="" />
+                                </div>
                             </div>
                             <div class="form-group col-md-6">
                                 <!-- removed assistance_barangay per request -->
@@ -148,18 +159,14 @@
                                     <input class="form-check-input" type="checkbox" name="barangay_recidency" id="barangay_recidency" style="transform: scale(1.45); margin-right: 10px;" required />
                                     <label class="form-check-label" for="barangay_recidency" style="vertical-align: middle; font-size:1.15rem;">Barangay Residency</label>
                                 </div>
+                                <div class="form-group mt-3">
+                                    <label for="academic_year">Academic Year (Active)</label>
+                                     <input type="text" name="academic_year" id="academic_year" class="form-control" readonly
+                                         value="{% if active_ay %}{{ active_ay.year|date:"Y" }}{% if active_ay.semester %} ({{ active_ay.semester.sem_name }}){% endif %}{% else %}No active academic year{% endif %}" />
+                                </div>
                             </div>
                         </div>
-                        <div class="row mt-3">
-                            <div class="form-group col-md-6">
-                                <label for="date_claimed">Date Claimed</label>
-                                <input type="date" name="date_claimed" id="date_claimed" class="form-control" required />
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label for="date_claim_expiry">Date Claim Expiry</label>
-                                <input type="date" name="date_claim_expiry" id="date_claim_expiry" class="form-control" required />
-                            </div>
-                        </div>
+                        <!-- Date Claimed and Date Claim Expiry removed from form -->
                         <div class="row mt-3">
                             <div class="form-group col-md-12 text-right">
                                 <button type="submit" class="btn btn-outline-primary">Save Assistance</button>
@@ -190,20 +197,19 @@
                                 <table class="table table-sm table-striped mb-0" id="previousReapTable">
                                     <thead>
                                         <tr>
-                                            <th>Tracking #</th>
-                                            <th>Claimed</th>
-                                            <th>Expiry</th>
-                                            <th>Biodata</th>
-                                            <th>Cert Reg</th>
-                                            <th>Cert Grades</th>
-                                            <th>Official Receipt</th>
-                                            <th>Indigency</th>
-                                            <th>Residency</th>
-                                            <th>Released</th>
-                                        </tr>
+                                                <th>Tracking #</th>
+                                                <th>Academic Year</th>
+                                                <th>Biodata</th>
+                                                <th>Cert Reg</th>
+                                                <th>Cert Grades</th>
+                                                <th>Official Receipt</th>
+                                                <th>Indigency</th>
+                                                <th>Residency</th>
+                                                <th>Released</th>
+                                            </tr>
                                     </thead>
                                     <tbody>
-                                        <tr class="no-data-row"><td colspan="10" class="text-muted">No previous REAP found.</td></tr>
+                                        <tr class="no-data-row"><td colspan="9" class="text-muted">No previous REAP found.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -254,8 +260,7 @@
                     <div class="mb-2"><strong>Tracking Number:</strong> <span id="peso_tracking">{% if recent_reap %}{{ recent_reap.tracking_number }}{% elif recent_bsr %}{{ recent_bsr.tracking_number }}{% endif %}</span></div>
                     <div class="mb-2"><strong>First name:</strong> <span id="peso_first">{% if recent_reap %}{{ recent_reap.first_name }}{% elif recent_bsr %}{{ recent_bsr.first_name }}{% endif %}</span></div>
                     <div class="mb-2"><strong>Last name:</strong> <span id="peso_last">{% if recent_reap %}{{ recent_reap.last_name }}{% elif recent_bsr %}{{ recent_bsr.last_name }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Date Claimed:</strong> <span id="peso_date_claimed">{% if recent_reap %}{{ recent_reap.date_claimed }}{% elif recent_bsr %}{{ recent_bsr.date_claimed }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Date Claim Expiry:</strong> <span id="peso_date_claim_expiry">{% if recent_reap %}{{ recent_reap.date_claim_expiry }}{% elif recent_bsr %}{{ recent_bsr.date_claim_expiry }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Academic Year:</strong> <span id="peso_academic_year">{% if recent_reap %}{{ recent_reap.academic_year }}{% elif recent_bsr and recent_bsr.Academic_year %}{{ recent_bsr.Academic_year.year|date:"Y" }}{% else %}N/A{% endif %}</span></div>
                     <div class="mb-2"><strong>Biodata:</strong> <span id="peso_biodata">{% if recent_reap and recent_reap.biodata %}<span class="text-success">&#10003;</span>{% elif recent_bsr and recent_bsr.biodata %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
                     <div class="mb-2"><strong>Certificate of Registration:</strong> <span id="peso_cert_reg">{% if recent_reap and recent_reap.certificate_of_reg %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
                     <div class="mb-2"><strong>Certificate of Grades:</strong> <span id="peso_cert_grades">{% if recent_reap and recent_reap.certificate_of_grades %}<span class="text-success">&#10003;</span>{% else %}<span class="text-muted">No</span>{% endif %}</span></div>
@@ -362,6 +367,18 @@ function submitRFID() {
             window.previousReapCurrentPage = 1;
             renderPreviousReapPage();
 
+            // Auto-set REAP type display (readonly). If there are no previous REAPs -> New, else -> Renew.
+            try {
+                var reapDisplayEl = document.getElementById('reap_type_display');
+                var reapHiddenEl = document.getElementById('reap_type');
+                var isNew = !rows || rows.length === 0;
+                if (reapDisplayEl) reapDisplayEl.value = isNew ? 'New' : 'Renew';
+                // Keep hidden input empty so server-side logic can still decide if needed.
+                if (reapHiddenEl) reapHiddenEl.value = '';
+            } catch (e) {
+                // ignore
+            }
+
             // Close modal
             $('#rfidModal').modal('hide');
         })
@@ -431,21 +448,20 @@ document.addEventListener('click', function(e){
         tbody.innerHTML = '';
 
         if (!slice.length) {
-            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','10'); td.className='text-muted'; td.textContent='No previous REAP found.'; tr.appendChild(td); tbody.appendChild(tr);
+            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','9'); td.className='text-muted'; td.textContent='No previous REAP found.'; tr.appendChild(td); tbody.appendChild(tr);
         } else {
             slice.forEach(function(item){
                 var tr = document.createElement('tr');
                 var t0 = document.createElement('td'); t0.textContent = item.tracking_number || '';
-                var t1 = document.createElement('td'); t1.textContent = item.date_claimed || '';
-                var t2 = document.createElement('td'); t2.textContent = item.date_claim_expiry || '';
-                var t3 = document.createElement('td'); t3.innerHTML = item.biodata ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
-                var t4 = document.createElement('td'); t4.innerHTML = item.certificate_of_reg ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
-                var t5 = document.createElement('td'); t5.innerHTML = item.certificate_of_grades ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
-                var t6 = document.createElement('td'); t6.innerHTML = item.official_receipt ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
-                var t7 = document.createElement('td'); t7.innerHTML = item.barangay_indigency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
-                var t8 = document.createElement('td'); t8.innerHTML = item.barangay_recidency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
-                var t9 = document.createElement('td'); t9.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
-                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6); tr.appendChild(t7); tr.appendChild(t8); tr.appendChild(t9);
+                var t1 = document.createElement('td'); t1.textContent = item.academic_year || '';
+                var t2 = document.createElement('td'); t2.innerHTML = item.biodata ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t3 = document.createElement('td'); t3.innerHTML = item.certificate_of_reg ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t4 = document.createElement('td'); t4.innerHTML = item.certificate_of_grades ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t5 = document.createElement('td'); t5.innerHTML = item.official_receipt ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t6 = document.createElement('td'); t6.innerHTML = item.barangay_indigency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t7 = document.createElement('td'); t7.innerHTML = item.barangay_recidency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
+                var t8 = document.createElement('td'); t8.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
+                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6); tr.appendChild(t7); tr.appendChild(t8);
                 tbody.appendChild(tr);
             });
         }

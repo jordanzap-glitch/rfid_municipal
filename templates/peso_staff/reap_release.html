@@ -1,0 +1,362 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <head>
+  <meta charset="UTF-8">
+  <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
+  <title>503 &mdash; Stisla</title>
+
+  <!-- General CSS Files -->
+  <link rel="stylesheet" href="{%static "modules/bootstrap/css/bootstrap.min.css"%}">
+  <link rel="stylesheet" href="{%static  "modules/fontawesome/css/all.min.css"%}">
+
+  <!-- CSS Libraries -->
+
+  <!-- Template CSS -->
+  <link rel="stylesheet" href="{%static "css/style.css"%}">
+  <link rel="stylesheet" href="{%static "css/components.css"%}">
+<!-- Start GA -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-94034622-3"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-94034622-3');
+</script>
+<!-- /END GA --></head>
+    <title>REAP Release</title>
+    <style>
+      :root{--card-bg:#ffffff;--muted:#6b7280;--accent:#2563eb;--success:#16a34a}
+      body{font-family: Inter, system-ui, -apple-system, Roboto, 'Segoe UI', Arial, sans-serif;background:#f3f6f9;padding:28px;color:#111827}
+      .card{background:var(--card-bg);border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,0.08);max-width:920px;margin:22px auto;overflow:hidden}
+      .card-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #eef2f7;background:linear-gradient(90deg, rgba(245,247,250,0.6), rgba(255,255,255,0));}
+      .card-header h2{margin:0;font-size:20px;font-weight:600}
+      .card-header .subtitle{color:var(--muted);font-size:13px}
+      .card-body{padding:20px 22px}
+      .profile{display:flex;gap:20px;align-items:center}
+      .profile img{width:140px;height:140px;object-fit:cover;border-radius:8px;border:1px solid #eef2f7;box-shadow:0 4px 12px rgba(2,6,23,0.04)}
+      .profile-info{display:flex;flex-direction:column;gap:6px}
+      .meta{font-size:15px;color:#0f172a}
+      .label{font-weight:700;color:var(--muted);margin-right:8px}
+      .info-row{display:flex;gap:12px;align-items:center}
+      .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:13px}
+      table#reapTable{margin-top:16px;border-radius:8px;overflow:hidden}
+      table#reapTable thead{background:#f8fafc}
+      table#reapTable th{font-weight:600;color:#374151}
+      table#reapTable td{vertical-align:middle}
+      .btn-release{min-width:86px}
+      @media (max-width:720px){
+        .profile{flex-direction:column;align-items:flex-start}
+        .profile img{width:120px;height:120px}
+      }
+      .hidden{display:none}
+      .release-message{padding:8px 12px;border-radius:8px;font-size:13px}
+      .release-message.success{background:rgba(16,185,129,0.12);color:var(--success);border:1px solid rgba(16,185,129,0.18)}
+      .release-message.error{background:rgba(239,68,68,0.08);color:#b91c1c;border:1px solid rgba(239,68,68,0.12)}
+    </style>
+  </head>
+  <body>
+    <div id="releaseCard" class="card">
+      <div class="card-header">
+        <div>
+          <h2>REAP Release</h2>
+          <div class="subtitle">Scan an RFID to view and release assistance</div>
+          <div id="releaseMessage" class="release-message hidden" aria-live="polite"></div>
+        </div>
+        <div>
+          <button id="openScanBtn" class="btn btn-outline-primary btn-sm">Scan Again</button>
+        </div>
+        {% include "includes/message.html" %}
+      </div>
+      <div class="card-body">
+        <!-- RFID is captured via modal shown on page load -->
+
+        <div id="releaseInfo" class="hidden">
+          <div class="profile">
+            <img id="profilePic" src="" alt="Profile" />
+            <div class="profile-info">
+              <div class="meta"><span class="label">Name</span><span id="name"></span></div>
+              <div class="meta"><span class="label">Municipality</span><span id="municipality"></span></div>
+              <div class="meta"><span class="label">Barangay</span><span id="barangay"></span></div>
+              <!-- Academic Year removed from header card; details remain in the table below -->
+            </div>
+          </div>
+
+          <table class="table table-sm" id="reapTable" style="margin-bottom:8px">
+            <thead>
+              <tr>
+                <th>Academic Year</th>
+                <th>Released</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="reapTbody">
+              <!-- rows populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {% include "includes/scripts.html" %}
+
+    <!-- RFID modal (shown on load). Uses Bootstrap modal behavior provided by included scripts. -->
+    <div class="modal fade" id="rfidModal" tabindex="-1" role="dialog" aria-labelledby="rfidModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="rfidModalLabel">Scan RFID</h5>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="modalRfid">RFID</label>
+              <input id="modalRfid" class="form-control" type="password" placeholder="Tap RFID here" autocomplete="off" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelScan">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Release modal -->
+    <div class="modal fade" id="confirmReleaseModal" tabindex="-1" role="dialog" aria-labelledby="confirmReleaseLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="confirmReleaseLabel">Confirm Release</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p><strong>Academic Year:</strong> <span id="modalAyDisplay"></span></p>
+            <p><strong>Start:</strong> <span id="modalAyStart"></span></p>
+            <p><strong>End:</strong> <span id="modalAyEnd"></span></p>
+            <p><strong>Semester:</strong> <span id="modalSemester"></span></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal" id="modalCancel">Cancel</button>
+            <button type="button" class="btn btn-primary" id="modalConfirmRelease">Release</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        // Elements
+        const releaseCard = document.getElementById('releaseCard');
+        const releaseInfo = document.getElementById('releaseInfo');
+        const profilePic = document.getElementById('profilePic');
+        const nameEl = document.getElementById('name');
+        const munEl = document.getElementById('municipality');
+        const brgyEl = document.getElementById('barangay');
+        const reapList = document.getElementById('reapList');
+        const modalRfid = document.getElementById('modalRfid');
+
+        function showError(msg){ alert(msg); }
+
+        // release message helpers (display under the subtitle)
+        const releaseMessageEl = document.getElementById('releaseMessage');
+        function showReleaseMessage(msg, type='success', timeout=5000){
+          if(!releaseMessageEl) return;
+          releaseMessageEl.textContent = msg || '';
+          releaseMessageEl.classList.remove('hidden','success','error');
+          releaseMessageEl.classList.add(type === 'error' ? 'error' : 'success');
+          // ensure visible
+          releaseMessageEl.style.display = '';
+          // auto-hide after timeout
+          if(timeout && timeout > 0){
+            setTimeout(()=>{
+              try{ releaseMessageEl.classList.add('hidden'); }catch(_){ releaseMessageEl.style.display='none'; }
+            }, timeout);
+          }
+        }
+        function clearReleaseMessage(){ if(releaseMessageEl){ releaseMessageEl.classList.add('hidden'); releaseMessageEl.style.display='none'; releaseMessageEl.textContent=''; } }
+
+        function renderPrev(prev){
+          // REAP Type column removed — only show Academic Year, Released, and Action
+          const releasedText = prev.is_released ? 'Yes' : 'No';
+          const actionHtml = prev.is_released
+            ? `<button class="btn btn-success btn-sm" disabled>Released</button>`
+            : `<button class="btn btn-primary btn-sm release-btn" data-academic-year-id="${prev.academic_year_id || ''}" data-ay-year="${prev.academic_year_start || ''}" data-semester-name="${prev.academic_year_semester || ''}">Release</button>`;
+
+          // Return a single table row; the JS will populate the tbody
+          return `
+            <tr>
+              <td>${prev.academic_year || ''}</td>
+              <td>${releasedText}</td>
+              <td>${actionHtml}</td>
+            </tr>`;
+        }
+
+        let currentRfid = null;
+        async function fetchByRfid(rfid){
+          if(!rfid) return false;
+          // clear any prior release message when scanning a new RFID
+          clearReleaseMessage();
+          try{
+            const res = await fetch(`/get/registration_reap/${encodeURIComponent(rfid)}/`);
+            if(!res.ok){ showError('Registration not found'); return false; }
+            const data = await res.json();
+            profilePic.src = data.profile_pic_url || '';
+            nameEl.textContent = `${data.first_name || ''} ${data.last_name || ''}`;
+            munEl.textContent = data.municipality_name || '';
+            brgyEl.textContent = data.barangay_name || '';
+
+            currentRfid = rfid;
+            const tbody = document.getElementById('reapTbody');
+              if(data.previous_reap_assistance && data.previous_reap_assistance.length){
+              tbody.innerHTML = data.previous_reap_assistance.map(renderPrev).join('');
+              attachReleaseHandlers();
+            } else {
+              tbody.innerHTML = '<tr><td colspan="3">No previous REAP found.</td></tr>';
+            }
+
+            // reveal the info section inside the single card
+            if(releaseInfo) releaseInfo.classList.remove('hidden');
+            return true;
+          }catch(e){ console.error(e); showError('Error fetching data'); return false; }
+        }
+
+        // CSRF helper (reads cookie by name)
+        function getCookie(name) {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop().split(';').shift();
+          return null;
+        }
+
+        // Attach click handlers to release buttons
+        function attachReleaseHandlers(){
+          const buttons = document.querySelectorAll('.release-btn');
+          buttons.forEach(btn => {
+            if(btn.dataset.bound) return btn.dataset.bound = '1';
+            btn.addEventListener('click', function(){
+              // populate modal with AY details from data attributes
+              const ayId = this.dataset.academicYearId;
+              const ayYear = this.dataset.ayYear || this.dataset.ayStart || '';
+              const semName = this.dataset.semesterName || '';
+
+              if(!ayId) return showError('Missing academic year id');
+              if(!currentRfid) return showError('Missing current RFID context');
+
+              // store selected context on confirm button
+              const confirmBtn = document.getElementById('modalConfirmRelease');
+              confirmBtn.dataset.academicYearId = ayId;
+              confirmBtn.dataset.rfid = currentRfid;
+
+              document.getElementById('modalAyDisplay').textContent = `${ayYear} ${semName ? '(' + semName + ')' : ''}`;
+              document.getElementById('modalAyStart').textContent = ayYear;
+              document.getElementById('modalAyEnd').textContent = ayYear;
+              document.getElementById('modalSemester').textContent = semName;
+
+              // show modal
+              try{ $('#confirmReleaseModal').modal('show'); }catch(_){ alert('Release: ' + (ayStart + ' - ' + ayEnd)); }
+            });
+          });
+        }
+
+        // handle confirm release modal action
+        document.addEventListener('DOMContentLoaded', function(){
+          const confirmBtn = document.getElementById('modalConfirmRelease');
+          confirmBtn.addEventListener('click', async function(){
+            const ayId = this.dataset.academicYearId;
+            const rfid = this.dataset.rfid;
+            if(!ayId || !rfid) return showError('Missing data for release');
+
+            try{
+              const csrftoken = getCookie('csrftoken');
+              const res = await fetch('/pesostaff/release_reap/', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrftoken || ''
+                },
+                body: JSON.stringify({ academic_year_id: ayId, rfid: rfid })
+              });
+              if(!res.ok){
+                const txt = await res.text();
+                showError('Failed to release: ' + (txt || res.statusText));
+                return;
+              }
+
+              // on success: hide modal and update the corresponding button to Released
+              try{ $('#confirmReleaseModal').modal('hide'); }catch(_){ }
+              const btn = document.querySelector(`.release-btn[data-academic-year-id="${ayId}"]`);
+              if(btn){ 
+                btn.textContent = 'Released'; 
+                btn.classList.remove('btn-primary'); 
+                btn.classList.add('btn-success'); 
+                btn.disabled = true; 
+                // also update the Released column in the same table row
+                try{
+                  const row = btn.closest('tr');
+                  if(row){
+                    const releasedCell = row.querySelector('td:nth-child(2)');
+                    if(releasedCell) releasedCell.textContent = 'Yes';
+                  }
+                }catch(e){/* ignore DOM update errors */}
+                // show a brief confirmation message under the subtitle
+                try{ showReleaseMessage('REAP released successfully.'); }catch(_){ }
+              }
+            }catch(err){ console.error(err); showError('Network error while releasing'); }
+          });
+        });
+
+        function showModal(){
+          // Using jQuery/bootstrap modal plugin (loaded in includes/scripts.html)
+          try{
+            $('#rfidModal').modal({backdrop:'static', keyboard:false});
+            $('#rfidModal').modal('show');
+            // focus input when modal shown
+            $('#rfidModal').on('shown.bs.modal', function () { $('#modalRfid').trigger('focus'); });
+          }catch(err){
+            // fallback: focus input directly
+            modalRfid.focus();
+          }
+        }
+
+        // Bind events after DOM ready
+        document.addEventListener('DOMContentLoaded', function(){
+          // show modal on load
+          showModal();
+
+          // bind Scan Again button to re-open RFID modal
+          const openScanBtn = document.getElementById('openScanBtn');
+          if(openScanBtn){
+            openScanBtn.addEventListener('click', function(e){
+              e.preventDefault();
+              showModal();
+            });
+          }
+
+          // handle enter key on modal input
+          modalRfid.addEventListener('keydown', async function(e){
+            if(e.key === 'Enter'){
+              const ok = await fetchByRfid(modalRfid.value.trim());
+              if(ok){
+                // hide modal
+                try{ $('#rfidModal').modal('hide'); }catch(_){}
+                modalRfid.value = '';
+              }
+            }
+          });
+
+          // cancel button hides modal
+          document.getElementById('cancelScan').addEventListener('click', function(){
+            try{ $('#rfidModal').modal('hide'); }catch(_){}
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
+
+
+  <!-- General JS Scripts -->
+   

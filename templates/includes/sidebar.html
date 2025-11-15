@@ -35,6 +35,13 @@
                     <li><a class="nav-link" href="{% url 'sysadmin_register' %}">Register</a></li>
                   </ul>
                 </li>
+                <li class="menu-header">Site Management</li>
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-clock"></i> <span>Cycle</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'sysadmin_cycle_create' %}">REAP Cycle</a></li>
+                  </ul>
+                </li>
               {% elif request.user.user_type == '3' %}
                 <!-- Municipal Admin Sidebar -->
                 <li class="dropdown">
@@ -102,6 +109,7 @@
                     <ul class="dropdown-menu">
                       <li><a class="nav-link" href="{% url 'reap_form' %}">REAP Form</a></li>
                       <li><a class="nav-link" href="{% url 'tupad_form' %}">Tupad Form</a></li>
+                      <li><a class="nav-link" href="{% url 'reap_release' %}">REAP Release</a></li>
                     </ul>
                   </li>
               {% else %}

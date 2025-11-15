@@ -35,6 +35,17 @@
                                 <input type="file" name="profile_pic" id="profile_pic" accept="image/*" style="display:none;" />
                             </div>
                             <div class="flex-fill">
+                                <div class="d-flex justify-content-end mb-2">
+                                    <div style="min-width:220px; max-width:320px;">
+                                        <label for="end_user_type" class="sr-only">End user type</label>
+                                        <select name="end_user_type" id="end_user_type" class="form-control form-control-sm" required>
+                                            <option value="" disabled selected>-- select end user type --</option>
+                                            {% for et in end_user_types %}
+                                                <option value="{{ et.id }}">{{ et.end_user_type }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
                                 <p class="text-muted mb-0">Upload a square profile image (recommended 300×300). Click "Upload" to choose a file.
                                 </p>
                             </div>
