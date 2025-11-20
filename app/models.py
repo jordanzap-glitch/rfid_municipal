@@ -41,18 +41,7 @@ class End_user_type(models.Model):
     def __str__(self):
         return self.end_user_type
  
-class RfidAuth(models.Model):
-    STATUS_CHOICES = (
-        ('valid', 'Valid'),
-        ('invalid', 'Invalid'),
-    )
-    rfid = models.CharField(max_length=50, unique=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='valid')
-    in_use = models.BooleanField(default=False)
-    date_added = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return f"{self.rfid} - {self.status} - {'In Use' if self.in_use else 'Not In Use'}"
+
     
     
 class Province(models.Model):
@@ -84,6 +73,12 @@ class Status(models.Model):
     def __str__(self):
         return self.status_name
 
+class Occupation(models.Model):
+    occupation_name = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.occupation_name
+
 class Registration(models.Model):
     rfid = models.CharField(max_length=50, unique=True)
 
@@ -102,7 +97,7 @@ class Registration(models.Model):
     mobile_no = models.CharField(max_length=20)
     gender = models.CharField(max_length=10, blank=True, null=True)
     civil_status = models.CharField(max_length=20, blank=True, null=True)
-    occupation = models.CharField(max_length=100, blank=True, null=True)
+    occupation = models.ForeignKey(Occupation, on_delete=models.CASCADE)
     email = models.CharField(max_length=100, blank=True, null=True, unique=True)
 
     date_added = models.DateTimeField(auto_now_add=True)
@@ -113,6 +108,21 @@ class Registration(models.Model):
 
     def __str__(self):
         return f"{self.last_name}, {self.first_name} {self.middle_name or ''}".strip()
+
+
+class RfidAuth(models.Model):
+    STATUS_CHOICES = (
+        ('valid', 'Valid'),
+        ('invalid', 'Invalid'),
+    )
+    rfid = models.CharField(max_length=50, unique=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='valid')
+    in_use = models.BooleanField(default=False)
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE, blank=True, null=True)
+    date_added = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.rfid} - {self.status} - {'In Use' if self.in_use else 'Not In Use'}"
     
 
 class Medicines(models.Model):
