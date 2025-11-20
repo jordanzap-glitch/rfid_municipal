@@ -6,8 +6,436 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Bsrcenter, Bsrcenter_Burial, Peso_reap, Peso_tupad, Occupation, Academic_year, Semester, Medicines, Bsrcenter_meds
+import csv
+from django.utils.encoding import smart_str
 
 
 def home(request):
-    return render(request,'mun_admin/home.html')
+    # show total registrations as total population
+    registration_count = Registration.objects.count()
+    # count registrations whose end_user_type_id == 1 (Senior Citizen)
+    senior_count = Registration.objects.filter(end_user_type_id=1).count()
+    # count registrations whose end_user_type_id == 2 (Students)
+    student_count = Registration.objects.filter(end_user_type_id=2).count()
+    # occupation-based counts (match by occupation name, case-insensitive)
+    farmers_count = Registration.objects.filter(occupation__occupation_name__iexact='Farmer').count()
+    construction_count = Registration.objects.filter(occupation__occupation_name__iexact='Construction Worker').count()
+    plumber_count = Registration.objects.filter(occupation__occupation_name__iexact='Plumber').count()
+    unemployed_count = Registration.objects.filter(occupation__occupation_name__iexact='Unemployed').count()
+    # analytics: center = bsrcenter + bsrcenter_burial, peso = peso_reap + peso_tupad
+    center_count = Bsrcenter.objects.count() + Bsrcenter_Burial.objects.count()
+    peso_count = Peso_reap.objects.count() + Peso_tupad.objects.count()
+    # Assistance breakdown counts
+    brscenter_medicals_count = Bsrcenter.objects.count()
+    bsrcenter_burials_count = Bsrcenter_Burial.objects.count()
+    peso_reap_count = Peso_reap.objects.count()
+    peso_tupad_count = Peso_tupad.objects.count()
+
+    context = { 'registration_count': registration_count, 'senior_count': senior_count, 'student_count': student_count }
+    # add occupation counts to context
+    context.update({
+        'farmers_count': farmers_count,
+        'construction_count': construction_count,
+        'plumber_count': plumber_count,
+        'unemployed_count': unemployed_count,
+        'center_count': center_count,
+        'peso_count': peso_count,
+        # assistance breakdown for template
+        'brscenter_medicals_count': brscenter_medicals_count,
+        'bsrcenter_burials_count': bsrcenter_burials_count,
+        'peso_reap_count': peso_reap_count,
+        'peso_tupad_count': peso_tupad_count,
+    })
+    return render(request, 'mun_admin/home.html', context)
+
+
+@login_required
+def medical_table(request):
+    """Render the medicals table for municipal admin.
+
+    Builds `bsrcenter_data` (same shape as center admin) but read-only.
+    """
+    STATUS_MAP = {1: 'pending', 2: 'approved', 3: 'rejected'}
+
+    # Fetch Bsrcenter rows with related registration/status and prefetch medicines
+    Bsrcenters = (
+        Bsrcenter.objects
+        .select_related('registration', 'status')
+        .prefetch_related('bsrcenter_meds_set__medicines')
+        .all()
+        .order_by('id')
+    )
+
+    data = []
+    for b in Bsrcenters:
+        reg = getattr(b, 'registration', None)
+
+        try:
+            sid = getattr(b.status, 'id', None) if getattr(b, 'status', None) else None
+            st = STATUS_MAP.get(sid) or (b.status.status_name if getattr(b, 'status', None) else '')
+        except Exception:
+            sid = None
+            st = ''
+
+        # processed_by name
+        processed_by_name = ''
+        if getattr(b, 'processed_by', None):
+            pb = b.processed_by
+            processed_by_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+        # gather medicines for this Bsrcenter row
+        med_list = []
+        med_names = []
+        for bm in b.bsrcenter_meds_set.all():
+            m = getattr(bm, 'medicines', None)
+            med_entry = {
+                'bsrcenter_meds_id': getattr(bm, 'id', None),
+                'medicine_id': getattr(m, 'id', None) if m else None,
+                'medicine_name': getattr(m, 'medicine_name', None) if m else None,
+                'amount': getattr(bm, 'amount', None) or getattr(b, 'amount', None),
+                'date_claimed': str(getattr(bm, 'date_claimed', None)) if getattr(bm, 'date_claimed', None) else (str(getattr(b, 'date_claimed', None)) if getattr(b, 'date_claimed', None) else None),
+                'date_claim_expiry': str(getattr(bm, 'date_claim_expiry', None)) if getattr(bm, 'date_claim_expiry', None) else (str(getattr(b, 'date_claim_expiry', None)) if getattr(b, 'date_claim_expiry', None) else None),
+            }
+            med_list.append(med_entry)
+            if med_entry.get('medicine_name'):
+                med_names.append(med_entry.get('medicine_name'))
+
+        medicine_names = ', '.join(med_names)
+
+        data.append({
+            'id': getattr(b, 'id', None),
+            'registration_id': getattr(b, 'registration_id', None),
+            'rfid': getattr(reg, 'rfid', None) if reg else None,
+            'last_name': getattr(reg, 'last_name', None) if reg else None,
+            'first_name': getattr(reg, 'first_name', None) if reg else None,
+            'middle_name': getattr(reg, 'middle_name', None) if reg else None,
+            'name_extension': getattr(reg, 'name_extension', None) if reg else None,
+            'date_of_birth': getattr(reg, 'date_of_birth', None) if reg else None,
+            'mobile_no': getattr(reg, 'mobile_no', None) if reg else None,
+            'gender': getattr(reg, 'gender', None) if reg else None,
+            'civil_status': getattr(reg, 'civil_status', None) if reg else None,
+            'occupation': getattr(reg, 'occupation', None) if reg else None,
+            'email': getattr(reg, 'email', None) if reg else None,
+            'province': getattr(reg.province, 'province_name', '') if reg and getattr(reg, 'province', None) else (reg.province if reg else ''),
+            'municipality': getattr(reg.municipality, 'municipality_name', '') if reg and getattr(reg, 'municipality', None) else (reg.municipality if reg else ''),
+            'barangay': getattr(reg.barangay, 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+            'age': getattr(b, 'age', None),
+            'amount': getattr(b, 'amount', None),
+            'medicine': medicine_names,
+            'medicine_list': med_list,
+            'date_claim_expiry': str(getattr(b, 'date_claim_expiry', None)) if getattr(b, 'date_claim_expiry', None) else None,
+            'date_claim_expiry_list': [str(getattr(bm, 'date_claim_expiry', None)) for bm in b.bsrcenter_meds_set.all() if getattr(bm, 'date_claim_expiry', None)] or ([str(getattr(b, 'date_claim_expiry', None))] if getattr(b, 'date_claim_expiry', None) else []),
+            'status': st,
+            'status_id': sid,
+            'processed_by': processed_by_name,
+        })
+
+    return render(request, 'mun_admin/medical_table.html', {'bsrcenter_data': data})
+@login_required
+def burial_table(request):
+    """Render the burials table for municipal admin (read-only).
+
+    Builds `bsrcenter_data` with burial rows similar to center admin.
+    """
+    STATUS_MAP = {1: 'pending', 2: 'approved', 3: 'rejected'}
+
+    rows = (
+        Bsrcenter_Burial.objects
+        .select_related('registration', 'status')
+        .all()
+        .order_by('id')
+    )
+
+    data = []
+    for r in rows:
+        reg = getattr(r, 'registration', None)
+        try:
+            sid = getattr(r.status, 'id', None) if getattr(r, 'status', None) else None
+            st = STATUS_MAP.get(sid) or (r.status.status_name if getattr(r, 'status', None) else '')
+        except Exception:
+            sid = None
+            st = ''
+
+        processed_by_name = ''
+        if getattr(r, 'processed_by', None):
+            pb = r.processed_by
+            processed_by_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+        data.append({
+            'id': getattr(r, 'id', None),
+            'registration_id': getattr(r, 'registration_id', None),
+            'last_name': getattr(reg, 'last_name', None) if reg else None,
+            'first_name': getattr(reg, 'first_name', None) if reg else None,
+            'mobile_no': getattr(reg, 'mobile_no', None) if reg else None,
+            'barangay': getattr(reg.barangay, 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+            'deceased_name': getattr(r, 'deceased_name', None),
+            'relationship': getattr(r, 'relationship', None),
+            'amount': getattr(r, 'amount', None),
+            'date_claim_expiry': str(getattr(r, 'date_claim_expiry', None)) if getattr(r, 'date_claim_expiry', None) else None,
+            'date_claimed': str(getattr(r, 'date_claimed', None)) if getattr(r, 'date_claimed', None) else None,
+            'cause_of_death': getattr(r, 'cause_of_death', None),
+            'status': st,
+            'status_id': sid,
+            'processed_by': processed_by_name,
+        })
+
+    return render(request, 'mun_admin/burial_table.html', {'bsrcenter_data': data})
+@login_required
+def Reap_tables(request):
+    """Render Peso_reap rows for municipal admin.
+
+    Each row will include registration names, academic year id, semester name,
+    status id/text, processed_by name, and is_released flag. The template
+    `mun_admin/reap_table.html` will receive this data as `bsrcenter_data`.
+    """
+    STATUS_MAP = {1: 'pending', 2: 'approved', 3: 'rejected'}
+
+    qs = (
+        Peso_reap.objects
+        .select_related('registration', 'status', 'processed_by', 'Academic_year__semester')
+        .all()
+        .order_by('id')
+    )
+
+    # Materialize queryset so we can inspect Academic_year.semester_id values
+    objs = list(qs)
+
+    # Collect semester IDs referenced by the related Academic_year objects
+    semester_ids = set()
+    for obj in objs:
+        academic_obj = getattr(obj, 'Academic_year', None)
+        if academic_obj is not None:
+            sid_val = getattr(academic_obj, 'semester_id', None)
+            if sid_val:
+                semester_ids.add(sid_val)
+
+    # Fetch semester names in one query and build a map
+    sem_map = {}
+    if semester_ids:
+        for s in Semester.objects.filter(id__in=semester_ids).values('id', 'sem_name'):
+            sem_map[s['id']] = s['sem_name']
+
+    data = []
+    for obj in objs:
+        reg = getattr(obj, 'registration', None)
+        try:
+            sid = getattr(obj.status, 'id', None) if getattr(obj, 'status', None) else None
+            st = STATUS_MAP.get(sid) or (obj.status.status_name if getattr(obj, 'status', None) else '')
+        except Exception:
+            sid = None
+            st = ''
+
+        # academic year and semester — field name is `Academic_year` on the model
+        academic_obj = getattr(obj, 'Academic_year', None)
+        academic_year_id = getattr(academic_obj, 'id', None) if academic_obj else None
+        academic_year = getattr(academic_obj, 'year', None) if academic_obj else None
+        # prefer the pre-fetched semester when available via sem_map
+        semester_name = ''
+        if academic_obj is not None:
+            sem_id = getattr(academic_obj, 'semester_id', None)
+            if sem_id:
+                semester_name = sem_map.get(sem_id, '')
+            else:
+                # fallback to related object attribute if present
+                semester_name = getattr(getattr(academic_obj, 'semester', None), 'sem_name', '')
+
+        processed_by_name = ''
+        if getattr(obj, 'processed_by', None):
+            pb = obj.processed_by
+            processed_by_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+        data.append({
+            'id': getattr(obj, 'id', None),
+            'registration_id': getattr(obj, 'registration_id', None),
+            'last_name': getattr(reg, 'last_name', None) if reg else None,
+            'first_name': getattr(reg, 'first_name', None) if reg else None,
+            'academic_year_id': academic_year_id,
+            'academic_year': academic_year,
+            'semester_name': semester_name,
+            'status': st,
+            'status_id': sid,
+            'processed_by': processed_by_name,
+            'is_released': getattr(obj, 'is_released', None),
+            'date_added': str(getattr(obj, 'date_added', None)) if getattr(obj, 'date_added', None) else None,
+        })
+
+    return render(request, 'mun_admin/reap_table.html', {'bsrcenter_data': data})
+@login_required
+def tupad_table(request):
+    """Render Peso_tupad rows for municipal admin (read-only).
+
+    Rows include registration names, beneficiary name, skills training name,
+    status id/text, processed_by name, is_released, and date_claimed.
+    """
+    STATUS_MAP = {1: 'pending', 2: 'approved', 3: 'rejected'}
+
+    qs = (
+        Peso_tupad.objects
+        .select_related('registration', 'status', 'processed_by', 'skills_training')
+        .all()
+        .order_by('id')
+    )
+
+    data = []
+    for obj in qs:
+        reg = getattr(obj, 'registration', None)
+        try:
+            sid = getattr(obj.status, 'id', None) if getattr(obj, 'status', None) else None
+            st = STATUS_MAP.get(sid) or (obj.status.status_name if getattr(obj, 'status', None) else '')
+        except Exception:
+            sid = None
+            st = ''
+
+        skills_name = ''
+        if getattr(obj, 'skills_training', None):
+            skills_name = getattr(obj.skills_training, 'Skills_name', '')
+
+        processed_by_name = ''
+        if getattr(obj, 'processed_by', None):
+            pb = obj.processed_by
+            processed_by_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+        data.append({
+            'id': getattr(obj, 'id', None),
+            'registration_id': getattr(obj, 'registration_id', None),
+            'last_name': getattr(reg, 'last_name', None) if reg else None,
+            'first_name': getattr(reg, 'first_name', None) if reg else None,
+            'name_of_beneficiary': getattr(obj, 'name_of_beneficiary', None),
+            'skills_training': skills_name,
+            'status': st,
+            'status_id': sid,
+            'processed_by': processed_by_name,
+            'is_released': bool(getattr(obj, 'is_released', False)),
+            'date_claimed': str(getattr(obj, 'date_claimed', None)) if getattr(obj, 'date_claimed', None) else None,
+        })
+
+    return render(request, 'mun_admin/tupad_table.html', {'bsrcenter_data': data})
+@require_GET
+@login_required
+def export_medicals(request):
+    """Export Bsrcenter (Medicals) as CSV"""
+    # prefetch related medicines through Bsrcenter_meds to avoid N+1 queries
+    qs = Bsrcenter.objects.select_related('registration', 'processed_by').prefetch_related('bsrcenter_meds_set__medicines').all()
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="medicals.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Barangay', 'Municipality', 'Date Claimed', 'Amount', 'Processed By', 'Medicines'])
+    for obj in qs:
+        reg = obj.registration
+        processed_by = ''
+        if obj.processed_by:
+            processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        # collect medicines for this bsrcenter (from Bsrcenter_meds)
+        meds_qs = getattr(obj, 'bsrcenter_meds_set', None)
+        meds_list = []
+        if meds_qs is not None:
+            for bm in meds_qs.all():
+                if bm.medicines:
+                    meds_list.append(bm.medicines.medicine_name)
+        meds_str = ', '.join(meds_list)
+
+        writer.writerow([
+            smart_str(obj.tracking_number or ''),
+            smart_str(reg.last_name if reg else ''),
+            smart_str(reg.first_name if reg else ''),
+            smart_str(reg.barangay.barangay_name if reg and reg.barangay else ''),
+            smart_str(reg.municipality.municipality_name if reg and reg.municipality else ''),
+            smart_str(obj.date_claimed),
+            smart_str(obj.amount),
+            smart_str(processed_by),
+            smart_str(meds_str),
+        ])
+    return response
+
+
+@require_GET
+@login_required
+def export_burials(request):
+    """Export Bsrcenter_Burial as CSV"""
+    qs = Bsrcenter_Burial.objects.select_related('registration', 'processed_by').all()
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="burials.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Deceased Name', 'Relationship', 'Date Claimed', 'Amount', 'Processed By'])
+    for obj in qs:
+        reg = obj.registration
+        processed_by = ''
+        if obj.processed_by:
+            processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        writer.writerow([
+            smart_str(obj.tracking_number or ''),
+            smart_str(reg.last_name if reg else ''),
+            smart_str(reg.first_name if reg else ''),
+            smart_str(obj.deceased_name),
+            smart_str(obj.relationship),
+            smart_str(obj.date_claimed),
+            smart_str(obj.amount),
+            smart_str(processed_by),
+        ])
+    return response
+
+
+@require_GET
+@login_required
+def export_reap(request):
+    """Export Peso_reap as CSV"""
+    # include Academic_year and its Semester to export human-readable year and semester
+    qs = Peso_reap.objects.select_related('registration', 'processed_by', 'reap_type', 'Academic_year__semester').all()
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="reap.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Reap Type', 'Academic Year', 'Semester', 'Date Added', 'Is Released', 'Processed By'])
+    for obj in qs:
+        reg = obj.registration
+        processed_by = ''
+        if obj.processed_by:
+            processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        # academic year and semester
+        academic_year = ''
+        semester_name = ''
+        academic_obj = getattr(obj, 'Academic_year', None)
+        if academic_obj is not None:
+            academic_year = getattr(academic_obj, 'year', '')
+            # related Semester via select_related
+            semester_name = getattr(getattr(academic_obj, 'semester', None), 'sem_name', '')
+        writer.writerow([
+            smart_str(obj.tracking_number or ''),
+            smart_str(reg.last_name if reg else ''),
+            smart_str(reg.first_name if reg else ''),
+            smart_str(obj.reap_type.type_name if obj.reap_type else ''),
+            smart_str(academic_year),
+            smart_str(semester_name),
+            smart_str(obj.date_added),
+            smart_str(obj.is_released),
+            smart_str(processed_by),
+        ])
+    return response
+
+
+@require_GET
+@login_required
+def export_tupad(request):
+    """Export Peso_tupad as CSV"""
+    qs = Peso_tupad.objects.select_related('registration', 'processed_by', 'skills_training').all()
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="tupad.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Beneficiary Name', 'Skills Training', 'Date Claimed', 'Is Released', 'Processed By'])
+    for obj in qs:
+        reg = obj.registration
+        processed_by = ''
+        if obj.processed_by:
+            processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        writer.writerow([
+            smart_str(obj.tracking_number or ''),
+            smart_str(reg.last_name if reg else ''),
+            smart_str(reg.first_name if reg else ''),
+            smart_str(obj.name_of_beneficiary),
+            smart_str(obj.skills_training.Skills_name if obj.skills_training else ''),
+            smart_str(obj.date_claimed),
+            smart_str(obj.is_released),
+            smart_str(processed_by),
+        ])
+    return response
+

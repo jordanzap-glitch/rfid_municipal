@@ -33,5 +33,7 @@ admin.site.register(Skills_training)
 admin.site.register(Academic_year)
 admin.site.register(Semester)
 admin.site.register(End_user_type)
+admin.site.register(Occupation)
+admin.site.register(Civil_status)
 admin.site.site_title = "RFID TAP Admin Portal"
 admin.site.site_header = "RFID TAP Admin"

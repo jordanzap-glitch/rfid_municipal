@@ -79,6 +79,12 @@ class Occupation(models.Model):
     def __str__(self):
         return self.occupation_name
 
+class Civil_status(models.Model):
+    civil_status_name = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.civil_status_name
+
 class Registration(models.Model):
     rfid = models.CharField(max_length=50, unique=True)
 
@@ -96,7 +102,7 @@ class Registration(models.Model):
 
     mobile_no = models.CharField(max_length=20)
     gender = models.CharField(max_length=10, blank=True, null=True)
-    civil_status = models.CharField(max_length=20, blank=True, null=True)
+    civil_status = models.ForeignKey(Civil_status, on_delete=models.CASCADE, blank=True, null=True)
     occupation = models.ForeignKey(Occupation, on_delete=models.CASCADE)
     email = models.CharField(max_length=100, blank=True, null=True, unique=True)
 

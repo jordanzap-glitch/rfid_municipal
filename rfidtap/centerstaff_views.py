@@ -7,7 +7,7 @@ from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Civil_status, Occupation
 from django.views.decorators.csrf import csrf_exempt
 from datetime import date, datetime as _dt
 from decimal import Decimal, InvalidOperation
@@ -336,8 +336,10 @@ def GET_REGISTRATION(request, rfid):
             'barangay_name': reg.barangay.barangay_name if reg.barangay else '',
             'mobile_no': reg.mobile_no,
             'gender': reg.gender,
-            'civil_status': reg.civil_status,
-            'occupation': reg.occupation,
+            'civil_status': reg.civil_status_id,
+            'civil_status_name': reg.civil_status.civil_status_name if reg.civil_status else '',
+            'occupation': reg.occupation_id,
+            'occupation_name': reg.occupation.occupation_name if reg.occupation else '',
             'email': reg.email,
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
             'zone_street': reg.zone_street or '',
@@ -390,8 +392,10 @@ def GET_REGISTRATION_BURIALS(request, rfid):
             'barangay_name': reg.barangay.barangay_name if reg.barangay else '',
             'mobile_no': reg.mobile_no,
             'gender': reg.gender,
-            'civil_status': reg.civil_status,
-            'occupation': reg.occupation,
+            'civil_status': reg.civil_status_id,
+            'civil_status_name': reg.civil_status.civil_status_name if reg.civil_status else '',
+            'occupation': reg.occupation_id,
+            'occupation_name': reg.occupation.occupation_name if reg.occupation else '',
             'email': reg.email,
             'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
             'zone_street': reg.zone_street or '',

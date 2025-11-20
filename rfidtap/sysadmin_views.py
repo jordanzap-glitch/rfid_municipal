@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, End_user_type, Academic_year, Semester
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, End_user_type, Academic_year, Semester, Civil_status, Occupation
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import uuid
@@ -21,6 +21,8 @@ def REGISTRATION_MEMBER(request):
     municipality = Municipality.objects.all()
     barangay = Barangay.objects.all()
     end_user_type = End_user_type.objects.all()
+    civil_statuses = Civil_status.objects.all()
+    occupations = Occupation.objects.all()
     
     if request.method == 'POST':
         rfid = request.POST.get('rfid')
@@ -41,8 +43,8 @@ def REGISTRATION_MEMBER(request):
             profile_pic = pic_path
         mobile_no = request.POST.get('mobile_no')
         gender = request.POST.get('gender')
-        civil_status = request.POST.get('civil_status')
-        occupation = request.POST.get('occupation')
+        civil_status_id = request.POST.get('civil_status')
+        occupation_id = request.POST.get('occupation')
         email = request.POST.get('email')
         # new fields
         age = request.POST.get('age')
@@ -70,6 +72,22 @@ def REGISTRATION_MEMBER(request):
                 except (ValueError, TypeError):
                     end_user_type_val = None
 
+                # Normalize civil_status and occupation ids
+                try:
+                    civil_status_val = int(civil_status_id) if civil_status_id not in (None, '') else None
+                except (ValueError, TypeError):
+                    civil_status_val = None
+
+                try:
+                    occupation_val = int(occupation_id) if occupation_id not in (None, '') else None
+                except (ValueError, TypeError):
+                    occupation_val = None
+
+                # Ensure an occupation was selected (server-side validation)
+                if occupation_val is None:
+                    messages.error(request, 'Please select an occupation.')
+                    return redirect('sysadmin_register')
+
                 # Ensure an end user type was selected (server-side validation)
                 if end_user_type_val is None:
                     messages.error(request, 'Please select an end user type.')
@@ -88,8 +106,8 @@ def REGISTRATION_MEMBER(request):
                     profile_pic=profile_pic,
                     mobile_no=mobile_no,
                     gender=gender,
-                    civil_status=civil_status,
-                    occupation=occupation,
+                    civil_status_id=civil_status_val,
+                    occupation_id=occupation_val,
                     email=email,
                     place_of_birth=place_of_birth,
                     age=age_val,
@@ -97,8 +115,8 @@ def REGISTRATION_MEMBER(request):
                     , end_user_type_id=end_user_type_val
                 )
                 registration.save()
-                # Update RfidAuth status and in_use
-                RfidAuth.objects.filter(rfid=rfid).update(status='invalid', in_use=True)
+                # Update RfidAuth status, in_use and link to the created registration
+                RfidAuth.objects.filter(rfid=rfid).update(status='invalid', in_use=True, registration_id=registration.id)
                 messages.success(request, 'Member registered successfully.')
                 return redirect('sysadmin_register')
             except IntegrityError:
@@ -109,6 +127,8 @@ def REGISTRATION_MEMBER(request):
         'municipality': municipality,
         'barangays': barangay,
         'end_user_types': end_user_type,
+        'civil_statuses': civil_statuses,
+        'occupations': occupations,
     }
     return render(request, 'sys_admin/registration.html', context)
 

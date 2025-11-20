@@ -340,8 +340,9 @@ function submitRFID() {
                 if (zs) zs.value = data.zone_street || '';
             }
             set('gender', data.gender);
-            set('civil_status', data.civil_status);
-            set('occupation', data.occupation);
+            // prefer readable names when provided, fall back to id
+            set('civil_status', data.civil_status_name || data.civil_status);
+            set('occupation', data.occupation_name || data.occupation);
             set('email', data.email);
             set('province', data.province_name);
             set('municipality', data.municipality_name);

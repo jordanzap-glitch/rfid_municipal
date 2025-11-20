@@ -50,8 +50,22 @@
                     <li><a class="nav-link" href="{% url 'municipaladmin_home' %}">Municipal Dashboard</a></li>
                   </ul>
                 </li>
-                <li class="menu-header">Actions</li>
-                <!-- Add Municipal Admin-specific menu items here -->
+                <li class="menu-header">Center</li>
+                  <li class="dropdown">
+                    <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>BSRCenter</span></a>
+                    <ul class="dropdown-menu">
+                      <li><a class="nav-link" href="{% url 'municipal_medical_table' %}">Medical Table (Center)</a></li>
+                      <li><a class="nav-link" href="{% url 'municipal_burial_table' %}">Burial Table (Center)</a></li>
+                    </ul>
+                </li>
+                <li class="menu-header">Peso</li>
+                  <li class="dropdown">
+                    <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>PESO</span></a>
+                    <ul class="dropdown-menu">
+                      <li><a class="nav-link" href="{% url 'municipal_reap_table' %}">REAP (PESO)</a></li>
+                      <li><a class="nav-link" href="{% url 'municipal_tupad_table' %}">Tupad (PESO)</a></li>
+                    </ul>
+                </li>
               {% elif request.user.user_type == '4' %}
                 <!-- Center Admin Sidebar -->
                 <li class="dropdown">

@@ -44,6 +44,14 @@ urlpatterns = [
     
     #municipal admin
     path('municipaladmin/home', munadmin_views.home, name='municipaladmin_home'),
+    path('municipaladmin/medicals', munadmin_views.medical_table, name='municipal_medical_table'),
+    path('municipaladmin/burials', munadmin_views.burial_table, name='municipal_burial_table'),
+    path('municipaladmin/export/medicals/', munadmin_views.export_medicals, name='municipal_export_medicals'),
+    path('municipaladmin/export/burials/', munadmin_views.export_burials, name='municipal_export_burials'),
+    path('municipaladmin/export/reap/', munadmin_views.export_reap, name='municipal_export_reap'),
+    path('municipaladmin/export/tupad/', munadmin_views.export_tupad, name='municipal_export_tupad'),
+    path('municipaladmin/reap', munadmin_views.Reap_tables, name='municipal_reap_table'),
+    path('municipaladmin/tupad', munadmin_views.tupad_table, name='municipal_tupad_table'),
     
     
     #center admin

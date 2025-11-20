@@ -317,8 +317,8 @@ function submitRFID() {
                 if (zs) zs.value = data.zone_street || '';
             }
             document.getElementById('gender').value = data.gender || '';
-            document.getElementById('civil_status').value = data.civil_status || '';
-            document.getElementById('occupation').value = data.occupation || '';
+            document.getElementById('civil_status').value = data.civil_status_name || data.civil_status || '';
+            document.getElementById('occupation').value = data.occupation_name || data.occupation || '';
             document.getElementById('email').value = data.email || '';
             document.getElementById('province').value = data.province_name || '';
             document.getElementById('municipality').value = data.municipality_name || '';
