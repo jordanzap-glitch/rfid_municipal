@@ -139,12 +139,12 @@
                         </div>
                         <div class="row mt-3">
                             <div class="form-group col-md-6">
-                                <label for="date_claimed">Date Claimed</label>
-                                <input type="date" name="date_claimed" id="date_claimed" class="form-control" />
+                                <label for="date_issued">Date Issued</label>
+                                <input type="date" name="date_issued" id="date_issued" class="form-control" />
                             </div>
                             <div class="form-group col-md-6">
-                                <label for="date_claim_expiry">Date Claim Expiry</label>
-                                <input type="date" name="date_claim_expiry" id="date_claim_expiry" class="form-control" />
+                                <label for="date_issued_expiry">Date Issued Expiry</label>
+                                <input type="date" name="date_issued_expiry" id="date_issued_expiry" class="form-control" />
                             </div>
                         </div>
                         <div class="row mt-3">
@@ -180,8 +180,8 @@
                                             <th>Tracking #</th>
                                             <th>Beneficiaries</th>
                                             <th>Skill / Training</th>
-                                            <th>Claimed</th>
-                                            <th>Expiry</th>
+                                            <th>Date Issued</th>
+                                            <th>Issued Expiry</th>
                                             <th>Released</th>
                                         </tr>
                                     </thead>
@@ -233,14 +233,14 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="pesoModalLabel">PESO Assistance Created</h5>
                 </div>
-                <div class="modal-body">
+                    <div class="modal-body">
                     <div class="mb-2"><strong>Tracking Number:</strong> <span id="peso_tracking">{% if recent_tupad %}{{ recent_tupad.tracking_number }}{% elif recent_reap %}{{ recent_reap.tracking_number }}{% elif recent_bsr %}{{ recent_bsr.tracking_number }}{% endif %}</span></div>
                     <div class="mb-2"><strong>First name:</strong> <span id="peso_first">{% if recent_tupad %}{{ recent_tupad.first_name }}{% elif recent_reap %}{{ recent_reap.first_name }}{% elif recent_bsr %}{{ recent_bsr.first_name }}{% endif %}</span></div>
                     <div class="mb-2"><strong>Last name:</strong> <span id="peso_last">{% if recent_tupad %}{{ recent_tupad.last_name }}{% elif recent_reap %}{{ recent_reap.last_name }}{% elif recent_bsr %}{{ recent_bsr.last_name }}{% endif %}</span></div>
                     <div class="mb-2"><strong>Name of Beneficiaries:</strong> <span id="peso_beneficiaries">{% if recent_tupad %}{{ recent_tupad.name_of_beneficiary }}{% endif %}</span></div>
                     <div class="mb-2"><strong>Skill / Training:</strong> <span id="peso_skill">{% if recent_tupad %}{{ recent_tupad.skills_training }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Date Claimed:</strong> <span id="peso_date_claimed">{% if recent_tupad %}{{ recent_tupad.date_claimed }}{% elif recent_reap %}{{ recent_reap.date_claimed }}{% elif recent_bsr %}{{ recent_bsr.date_claimed }}{% endif %}</span></div>
-                    <div class="mb-2"><strong>Date Claim Expiry:</strong> <span id="peso_date_claim_expiry">{% if recent_tupad %}{{ recent_tupad.date_claim_expiry }}{% elif recent_reap %}{{ recent_reap.date_claim_expiry }}{% elif recent_bsr %}{{ recent_bsr.date_claim_expiry }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Issued:</strong> <span id="peso_date_issued">{% if recent_tupad %}{{ recent_tupad.date_issued }}{% elif recent_reap %}{{ recent_reap.date_claimed }}{% elif recent_bsr %}{{ recent_bsr.date_claimed }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Issued Expiry:</strong> <span id="peso_date_issued_expiry">{% if recent_tupad %}{{ recent_tupad.date_issued_expiry }}{% elif recent_reap %}{{ recent_reap.date_claim_expiry }}{% elif recent_bsr %}{{ recent_bsr.date_claim_expiry }}{% endif %}</span></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -417,8 +417,8 @@ document.addEventListener('click', function(e){
                 var t0 = document.createElement('td'); t0.textContent = item.tracking_number || '';
                 var t1 = document.createElement('td'); t1.textContent = item.name_of_beneficiary || '';
                 var t2 = document.createElement('td'); t2.textContent = item.skills_training || '';
-                var t3 = document.createElement('td'); t3.textContent = item.date_claimed || '';
-                var t4 = document.createElement('td'); t4.textContent = item.date_claim_expiry || '';
+                var t3 = document.createElement('td'); t3.textContent = item.date_issued || '';
+                var t4 = document.createElement('td'); t4.textContent = item.date_issued_expiry || '';
                 var t5 = document.createElement('td'); t5.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
                 tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5);
                 tbody.appendChild(tr);

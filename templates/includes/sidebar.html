@@ -48,6 +48,7 @@
                   <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
                   <ul class="dropdown-menu">
                     <li><a class="nav-link" href="{% url 'municipaladmin_home' %}">Municipal Dashboard</a></li>
+                    <li><a class="nav-link" href="{% url 'municipaladmin_analytics_home' %}">Analytics</a></li>
                   </ul>
                 </li>
                 <li class="menu-header">Center</li>
@@ -109,6 +110,14 @@
                     <li><a class="nav-link" href="{% url 'adminpeso_home' %}">Peso Admin Dashboard</a></li>
                   </ul>
                 </li>
+                 <li class="menu-header">Informations</li>
+                  <li class="dropdown">
+                    <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Tables</span></a>
+                    <ul class="dropdown-menu">
+                      <li><a class="nav-link" href="{% url 'approval_table_reap' %}">REAP Approval Table</a></li>
+                      <li><a class="nav-link" href="{% url 'approval_table_tupad' %}">Tupad Approval Table</a></li>
+                    </ul>
+                </li>
               {% elif request.user.user_type == '7' %}
                 <!-- Peso Staff Sidebar -->
                 <li class="dropdown">
@@ -122,8 +131,10 @@
                     <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Applications</span></a>
                     <ul class="dropdown-menu">
                       <li><a class="nav-link" href="{% url 'reap_form' %}">REAP Form</a></li>
-                      <li><a class="nav-link" href="{% url 'tupad_form' %}">Tupad Form</a></li>
                       <li><a class="nav-link" href="{% url 'reap_release' %}">REAP Release</a></li>
+                      <li><a class="nav-link" href="{% url 'tupad_form' %}">Tupad Form</a></li>
+                      <li><a class="nav-link" href="{% url 'tupad_release' %}">Tupad Release</a></li>
+                      
                     </ul>
                   </li>
               {% else %}

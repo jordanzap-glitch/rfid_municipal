@@ -153,6 +153,8 @@ class Bsrcenter(models.Model):
     barangay_recidency = models.BooleanField(default=False)
     diagnosis = models.TextField (blank=True, null=True)
     processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+    actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_bsrcenters', blank=True, null=True)
+    actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
@@ -182,6 +184,8 @@ class Bsrcenter_Burial(models.Model):
     cause_of_death = models.TextField (blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+    actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_bsrcenter_burials', blank=True, null=True)
+    actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
      
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
@@ -213,6 +217,8 @@ class Peso_reap(models.Model):
     Academic_year = models.ForeignKey(Academic_year, on_delete=models.CASCADE, blank=True, null=True)
     reap_type = models.ForeignKey(Reap_type, on_delete=models.CASCADE, blank=True, null=True)
     next = models.BooleanField(default=False)
+    actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_peso_reaps', blank=True, null=True)
+    actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
@@ -231,13 +237,15 @@ class Skills_training(models.Model):
 class Peso_tupad(models.Model):
     tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
-    date_claimed = models.DateField(auto_now_add=True)
-    date_claim_expiry = models.DateField()
+    date_issued = models.DateField(auto_now_add=True)
+    date_issued_expiry = models.DateField()
     name_of_beneficiary = models.CharField(max_length=255)
     skills_training = models.ForeignKey(Skills_training, on_delete=models.CASCADE)
     processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
     is_released = models.BooleanField(default=False)
     status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
+    actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_peso_tupads', blank=True, null=True)
+    actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]

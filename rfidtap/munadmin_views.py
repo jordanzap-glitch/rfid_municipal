@@ -49,9 +49,51 @@ def home(request):
     })
     return render(request, 'mun_admin/home.html', context)
 
+def analytics_home(request):
+    # Compute REAP release progress metrics for analytics card
+    try:
+        reap_total = Peso_reap.objects.count()
+        reap_released = Peso_reap.objects.filter(is_released=True).count()
+    except Exception:
+        reap_total = 0
+        reap_released = 0
+
+    try:
+        reap_released_pct = int(round((reap_released / reap_total) * 100)) if reap_total else 0
+    except Exception:
+        reap_released_pct = 0
+
+    context = {
+        'reap_total': reap_total,
+        'reap_released': reap_released,
+        'reap_released_pct': reap_released_pct,
+    }
+
+    # Compute TUPAD release progress metrics for analytics card
+    try:
+        tupad_total = Peso_tupad.objects.count()
+        tupad_released = Peso_tupad.objects.filter(is_released=True).count()
+    except Exception:
+        tupad_total = 0
+        tupad_released = 0
+
+    try:
+        tupad_released_pct = int(round((tupad_released / tupad_total) * 100)) if tupad_total else 0
+    except Exception:
+        tupad_released_pct = 0
+
+    # add TUPAD values to context
+    context.update({
+        'tupad_total': tupad_total,
+        'tupad_released': tupad_released,
+        'tupad_released_pct': tupad_released_pct,
+    })
+
+    return render(request, 'mun_admin/analytics_home.html', context)
+
 
 @login_required
-def medical_table(request):
+def MEDICAL_TABLE(request):
     """Render the medicals table for municipal admin.
 
     Builds `bsrcenter_data` (same shape as center admin) but read-only.
@@ -105,6 +147,7 @@ def medical_table(request):
 
         data.append({
             'id': getattr(b, 'id', None),
+            'tracking_number': getattr(b, 'tracking_number', None),
             'registration_id': getattr(b, 'registration_id', None),
             'rfid': getattr(reg, 'rfid', None) if reg else None,
             'last_name': getattr(reg, 'last_name', None) if reg else None,
@@ -133,7 +176,7 @@ def medical_table(request):
 
     return render(request, 'mun_admin/medical_table.html', {'bsrcenter_data': data})
 @login_required
-def burial_table(request):
+def BURIAL_TABLE(request):
     """Render the burials table for municipal admin (read-only).
 
     Builds `bsrcenter_data` with burial rows similar to center admin.
@@ -164,6 +207,7 @@ def burial_table(request):
 
         data.append({
             'id': getattr(r, 'id', None),
+            'tracking_number': getattr(r, 'tracking_number', None),
             'registration_id': getattr(r, 'registration_id', None),
             'last_name': getattr(reg, 'last_name', None) if reg else None,
             'first_name': getattr(reg, 'first_name', None) if reg else None,
@@ -182,7 +226,7 @@ def burial_table(request):
 
     return render(request, 'mun_admin/burial_table.html', {'bsrcenter_data': data})
 @login_required
-def Reap_tables(request):
+def REAP_TABLE(request):
     """Render Peso_reap rows for municipal admin.
 
     Each row will include registration names, academic year id, semester name,
@@ -247,6 +291,7 @@ def Reap_tables(request):
 
         data.append({
             'id': getattr(obj, 'id', None),
+            'tracking_number': getattr(obj, 'tracking_number', None),
             'registration_id': getattr(obj, 'registration_id', None),
             'last_name': getattr(reg, 'last_name', None) if reg else None,
             'first_name': getattr(reg, 'first_name', None) if reg else None,
@@ -262,7 +307,7 @@ def Reap_tables(request):
 
     return render(request, 'mun_admin/reap_table.html', {'bsrcenter_data': data})
 @login_required
-def tupad_table(request):
+def TUPAD_TABLE(request):
     """Render Peso_tupad rows for municipal admin (read-only).
 
     Rows include registration names, beneficiary name, skills training name,
@@ -298,6 +343,7 @@ def tupad_table(request):
 
         data.append({
             'id': getattr(obj, 'id', None),
+            'tracking_number': getattr(obj, 'tracking_number', None),
             'registration_id': getattr(obj, 'registration_id', None),
             'last_name': getattr(reg, 'last_name', None) if reg else None,
             'first_name': getattr(reg, 'first_name', None) if reg else None,
@@ -313,14 +359,14 @@ def tupad_table(request):
     return render(request, 'mun_admin/tupad_table.html', {'bsrcenter_data': data})
 @require_GET
 @login_required
-def export_medicals(request):
+def EXPORT_MEDICALS(request):
     """Export Bsrcenter (Medicals) as CSV"""
     # prefetch related medicines through Bsrcenter_meds to avoid N+1 queries
     qs = Bsrcenter.objects.select_related('registration', 'processed_by').prefetch_related('bsrcenter_meds_set__medicines').all()
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="medicals.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Barangay', 'Municipality', 'Date Claimed', 'Amount', 'Processed By', 'Medicines'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Barangay', 'Municipality', 'Date Claimed', 'Amount', 'Status', 'Processed By', 'Medicines'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
@@ -335,6 +381,7 @@ def export_medicals(request):
                     meds_list.append(bm.medicines.medicine_name)
         meds_str = ', '.join(meds_list)
 
+        status_name = getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else ''
         writer.writerow([
             smart_str(obj.tracking_number or ''),
             smart_str(reg.last_name if reg else ''),
@@ -343,6 +390,7 @@ def export_medicals(request):
             smart_str(reg.municipality.municipality_name if reg and reg.municipality else ''),
             smart_str(obj.date_claimed),
             smart_str(obj.amount),
+            smart_str(status_name),
             smart_str(processed_by),
             smart_str(meds_str),
         ])
@@ -351,18 +399,19 @@ def export_medicals(request):
 
 @require_GET
 @login_required
-def export_burials(request):
+def EXPORT_BURIALS(request):
     """Export Bsrcenter_Burial as CSV"""
     qs = Bsrcenter_Burial.objects.select_related('registration', 'processed_by').all()
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="burials.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Deceased Name', 'Relationship', 'Date Claimed', 'Amount', 'Processed By'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Deceased Name', 'Relationship', 'Date Claimed', 'Amount', 'Status', 'Processed By'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
         if obj.processed_by:
             processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        status_name = getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else ''
         writer.writerow([
             smart_str(obj.tracking_number or ''),
             smart_str(reg.last_name if reg else ''),
@@ -371,6 +420,7 @@ def export_burials(request):
             smart_str(obj.relationship),
             smart_str(obj.date_claimed),
             smart_str(obj.amount),
+            smart_str(status_name),
             smart_str(processed_by),
         ])
     return response
@@ -378,14 +428,14 @@ def export_burials(request):
 
 @require_GET
 @login_required
-def export_reap(request):
+def EXPORT_REAPS(request):
     """Export Peso_reap as CSV"""
     # include Academic_year and its Semester to export human-readable year and semester
     qs = Peso_reap.objects.select_related('registration', 'processed_by', 'reap_type', 'Academic_year__semester').all()
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="reap.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Reap Type', 'Academic Year', 'Semester', 'Date Added', 'Is Released', 'Processed By'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Reap Type', 'Academic Year', 'Semester', 'Date Added', 'Is Released', 'Status', 'Processed By'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
@@ -399,6 +449,7 @@ def export_reap(request):
             academic_year = getattr(academic_obj, 'year', '')
             # related Semester via select_related
             semester_name = getattr(getattr(academic_obj, 'semester', None), 'sem_name', '')
+        status_name = getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else ''
         writer.writerow([
             smart_str(obj.tracking_number or ''),
             smart_str(reg.last_name if reg else ''),
@@ -408,6 +459,7 @@ def export_reap(request):
             smart_str(semester_name),
             smart_str(obj.date_added),
             smart_str(obj.is_released),
+            smart_str(status_name),
             smart_str(processed_by),
         ])
     return response
@@ -415,18 +467,19 @@ def export_reap(request):
 
 @require_GET
 @login_required
-def export_tupad(request):
+def EXPORT_TUPADS(request):
     """Export Peso_tupad as CSV"""
     qs = Peso_tupad.objects.select_related('registration', 'processed_by', 'skills_training').all()
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="tupad.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Beneficiary Name', 'Skills Training', 'Date Claimed', 'Is Released', 'Processed By'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Beneficiary Name', 'Skills Training', 'Date Claimed', 'Is Released', 'Status', 'Processed By'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
         if obj.processed_by:
             processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        status_name = getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else ''
         writer.writerow([
             smart_str(obj.tracking_number or ''),
             smart_str(reg.last_name if reg else ''),
@@ -435,6 +488,7 @@ def export_tupad(request):
             smart_str(obj.skills_training.Skills_name if obj.skills_training else ''),
             smart_str(obj.date_claimed),
             smart_str(obj.is_released),
+            smart_str(status_name),
             smart_str(processed_by),
         ])
     return response

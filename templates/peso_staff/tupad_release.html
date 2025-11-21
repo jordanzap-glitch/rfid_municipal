@@ -2,31 +2,16 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <head>
-  <meta charset="UTF-8">
-  <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
-  <title>Release reap</title>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
+    <title>TUPAD Release</title>
 
-  <!-- General CSS Files -->
-  <link rel="stylesheet" href="{%static "modules/bootstrap/css/bootstrap.min.css"%}">
-  <link rel="stylesheet" href="{%static  "modules/fontawesome/css/all.min.css"%}">
+    <!-- General CSS Files -->
+    <link rel="stylesheet" href="{%static "modules/bootstrap/css/bootstrap.min.css"%}">
+    <link rel="stylesheet" href="{%static  "modules/fontawesome/css/all.min.css"%}">
+    <link rel="stylesheet" href="{%static "css/style.css"%}">
+    <link rel="stylesheet" href="{%static "css/components.css"%}">
 
-  <!-- CSS Libraries -->
-
-  <!-- Template CSS -->
-  <link rel="stylesheet" href="{%static "css/style.css"%}">
-  <link rel="stylesheet" href="{%static "css/components.css"%}">
-<!-- Start GA -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=UA-94034622-3"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'UA-94034622-3');
-</script>
-<!-- /END GA --></head>
-    <title>REAP Release</title>
     <style>
       :root{--card-bg:#ffffff;--muted:#6b7280;--accent:#2563eb;--success:#16a34a}
       body{font-family: Inter, system-ui, -apple-system, Roboto, 'Segoe UI', Arial, sans-serif;background:#f3f6f9;padding:28px;color:#111827}
@@ -40,17 +25,11 @@
       .profile-info{display:flex;flex-direction:column;gap:6px}
       .meta{font-size:15px;color:#0f172a}
       .label{font-weight:700;color:var(--muted);margin-right:8px}
-      .info-row{display:flex;gap:12px;align-items:center}
-      .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:13px}
-      table#reapTable{margin-top:16px;border-radius:8px;overflow:hidden}
-      table#reapTable thead{background:#f8fafc}
-      table#reapTable th{font-weight:600;color:#374151}
-      table#reapTable td{vertical-align:middle}
+      table#tupadTable{margin-top:16px;border-radius:8px;overflow:hidden}
+      table#tupadTable thead{background:#f8fafc}
+      table#tupadTable th{font-weight:600;color:#374151}
+      table#tupadTable td{vertical-align:middle}
       .btn-release{min-width:86px}
-      @media (max-width:720px){
-        .profile{flex-direction:column;align-items:flex-start}
-        .profile img{width:120px;height:120px}
-      }
       .hidden{display:none}
       .release-message{padding:8px 12px;border-radius:8px;font-size:13px}
       .release-message.success{background:rgba(16,185,129,0.12);color:var(--success);border:1px solid rgba(16,185,129,0.18)}
@@ -62,8 +41,8 @@
   <div id="releaseCard" class="card">
       <div class="card-header">
         <div>
-          <h2>REAP Release</h2>
-          <div class="subtitle">Scan an RFID to view and release assistance</div>
+          <h2>TUPAD Release</h2>
+          <div class="subtitle">Scan an RFID to view and release TUPAD assistance</div>
           <div id="releaseMessage" class="release-message hidden" aria-live="polite"></div>
         </div>
         <div>
@@ -72,8 +51,6 @@
         {% include "includes/message.html" %}
       </div>
       <div class="card-body">
-        <!-- RFID is captured via modal shown on page load -->
-
         <div id="releaseInfo" class="hidden">
           <div class="profile">
             <img id="profilePic" src="" alt="Profile" />
@@ -81,19 +58,18 @@
               <div class="meta"><span class="label">Name</span><span id="name"></span></div>
               <div class="meta"><span class="label">Municipality</span><span id="municipality"></span></div>
               <div class="meta"><span class="label">Barangay</span><span id="barangay"></span></div>
-              <!-- Academic Year removed from header card; details remain in the table below -->
             </div>
           </div>
 
-          <table class="table table-sm" id="reapTable" style="margin-bottom:8px">
+          <table class="table table-sm" id="tupadTable" style="margin-bottom:8px">
             <thead>
               <tr>
-                <th>Academic Year</th>
+                <th>Date Issued</th>
                 <th>Released</th>
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="reapTbody">
+            <tbody id="tupadTbody">
               <!-- rows populated by JS -->
             </tbody>
           </table>
@@ -134,10 +110,9 @@
             </button>
           </div>
           <div class="modal-body">
-            <p><strong>Academic Year:</strong> <span id="modalAyDisplay"></span></p>
-            <p><strong>Start:</strong> <span id="modalAyStart"></span></p>
-            <p><strong>End:</strong> <span id="modalAyEnd"></span></p>
-            <p><strong>Semester:</strong> <span id="modalSemester"></span></p>
+            <p><strong>Date Issued:</strong> <span id="modalDateIssued"></span></p>
+            <p><strong>Name of Beneficiaries:</strong> <span id="modalBeneficiaries"></span></p>
+            <p><strong>Skill:</strong> <span id="modalSkill"></span></p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal" id="modalCancel">Cancel</button>
@@ -149,47 +124,35 @@
 
     <script>
       (function(){
-        // Elements
-        const releaseCard = document.getElementById('releaseCard');
         const releaseInfo = document.getElementById('releaseInfo');
         const profilePic = document.getElementById('profilePic');
         const nameEl = document.getElementById('name');
         const munEl = document.getElementById('municipality');
         const brgyEl = document.getElementById('barangay');
-        const reapList = document.getElementById('reapList');
         const modalRfid = document.getElementById('modalRfid');
 
-        function showError(msg){ alert(msg); }
-
-        // release message helpers (display under the subtitle)
         const releaseMessageEl = document.getElementById('releaseMessage');
         function showReleaseMessage(msg, type='success', timeout=5000){
           if(!releaseMessageEl) return;
           releaseMessageEl.textContent = msg || '';
           releaseMessageEl.classList.remove('hidden','success','error');
           releaseMessageEl.classList.add(type === 'error' ? 'error' : 'success');
-          // ensure visible
           releaseMessageEl.style.display = '';
-          // auto-hide after timeout
           if(timeout && timeout > 0){
-            setTimeout(()=>{
-              try{ releaseMessageEl.classList.add('hidden'); }catch(_){ releaseMessageEl.style.display='none'; }
-            }, timeout);
+            setTimeout(()=>{ try{ releaseMessageEl.classList.add('hidden'); }catch(_){ releaseMessageEl.style.display='none'; } }, timeout);
           }
         }
         function clearReleaseMessage(){ if(releaseMessageEl){ releaseMessageEl.classList.add('hidden'); releaseMessageEl.style.display='none'; releaseMessageEl.textContent=''; } }
 
         function renderPrev(prev){
-          // REAP Type column removed — only show Academic Year, Released, and Action
           const releasedText = prev.is_released ? 'Yes' : 'No';
           const actionHtml = prev.is_released
             ? `<button class="btn btn-success btn-sm" disabled>Released</button>`
-            : `<button class="btn btn-primary btn-sm release-btn" data-academic-year-id="${prev.academic_year_id || ''}" data-ay-year="${prev.academic_year_start || ''}" data-semester-name="${prev.academic_year_semester || ''}">Release</button>`;
+            : `<button class="btn btn-primary btn-sm release-btn" data-id="${prev.id || ''}" data-tracking="${prev.tracking_number || ''}" data-date-issued="${prev.date_issued || ''}" data-beneficiaries="${(prev.name_of_beneficiary || '')}" data-skill="${(prev.skills_training || '')}">Release</button>`;
 
-          // Return a single table row; the JS will populate the tbody
           return `
             <tr>
-              <td>${prev.academic_year || ''}</td>
+              <td>${prev.date_issued || ''}</td>
               <td>${releasedText}</td>
               <td>${actionHtml}</td>
             </tr>`;
@@ -198,11 +161,10 @@
         let currentRfid = null;
         async function fetchByRfid(rfid){
           if(!rfid) return false;
-          // clear any prior release message when scanning a new RFID
           clearReleaseMessage();
           try{
-            const res = await fetch(`/get/registration_reap/${encodeURIComponent(rfid)}/`);
-            if(!res.ok){ showError('Registration not found'); return false; }
+            const res = await fetch(`/get/registration_tupad/${encodeURIComponent(rfid)}/`);
+            if(!res.ok){ alert('Registration not found'); return false; }
             const data = await res.json();
             profilePic.src = data.profile_pic_url || '';
             nameEl.textContent = `${data.first_name || ''} ${data.last_name || ''}`;
@@ -210,21 +172,19 @@
             brgyEl.textContent = data.barangay_name || '';
 
             currentRfid = rfid;
-            const tbody = document.getElementById('reapTbody');
-              if(data.previous_reap_assistance && data.previous_reap_assistance.length){
-              tbody.innerHTML = data.previous_reap_assistance.map(renderPrev).join('');
+            const tbody = document.getElementById('tupadTbody');
+            if(data.previous_tupad_assistance && data.previous_tupad_assistance.length){
+              tbody.innerHTML = data.previous_tupad_assistance.map(renderPrev).join('');
               attachReleaseHandlers();
             } else {
-              tbody.innerHTML = '<tr><td colspan="3">No previous REAP found.</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="3">No previous TUPAD found.</td></tr>';
             }
 
-            // reveal the info section inside the single card
             if(releaseInfo) releaseInfo.classList.remove('hidden');
             return true;
-          }catch(e){ console.error(e); showError('Error fetching data'); return false; }
+          }catch(e){ console.error(e); alert('Error fetching data'); return false; }
         }
 
-        // CSRF helper (reads cookie by name)
         function getCookie(name) {
           const value = `; ${document.cookie}`;
           const parts = value.split(`; ${name}=`);
@@ -232,132 +192,78 @@
           return null;
         }
 
-        // Attach click handlers to release buttons
         function attachReleaseHandlers(){
           const buttons = document.querySelectorAll('.release-btn');
           buttons.forEach(btn => {
             if(btn.dataset.bound) return btn.dataset.bound = '1';
             btn.addEventListener('click', function(){
-              // populate modal with AY details from data attributes
-              const ayId = this.dataset.academicYearId;
-              const ayYear = this.dataset.ayYear || this.dataset.ayStart || '';
-              const semName = this.dataset.semesterName || '';
+              const id = this.dataset.id;
+              const tracking = this.dataset.tracking;
+              const dateIssued = this.dataset.dateIssued || '';
+              const beneficiaries = this.dataset.beneficiaries || '';
+              const skill = this.dataset.skill || '';
 
-              if(!ayId) return showError('Missing academic year id');
-              if(!currentRfid) return showError('Missing current RFID context');
+              if(!id && !tracking) return alert('Missing identifier');
+              if(!currentRfid) return alert('Missing current RFID');
 
-              // store selected context on confirm button
               const confirmBtn = document.getElementById('modalConfirmRelease');
-              confirmBtn.dataset.academicYearId = ayId;
+              confirmBtn.dataset.id = id || '';
+              confirmBtn.dataset.tracking = tracking || '';
               confirmBtn.dataset.rfid = currentRfid;
 
-              document.getElementById('modalAyDisplay').textContent = `${ayYear} ${semName ? '(' + semName + ')' : ''}`;
-              document.getElementById('modalAyStart').textContent = ayYear;
-              document.getElementById('modalAyEnd').textContent = ayYear;
-              document.getElementById('modalSemester').textContent = semName;
+              document.getElementById('modalDateIssued').textContent = dateIssued;
+              document.getElementById('modalBeneficiaries').textContent = beneficiaries;
+              document.getElementById('modalSkill').textContent = skill;
 
-              // show modal
-              try{ $('#confirmReleaseModal').modal('show'); }catch(_){ alert('Release: ' + (ayStart + ' - ' + ayEnd)); }
+              try{ $('#confirmReleaseModal').modal('show'); }catch(_){ alert('Release confirm'); }
             });
           });
         }
 
-        // handle confirm release modal action
         document.addEventListener('DOMContentLoaded', function(){
           const confirmBtn = document.getElementById('modalConfirmRelease');
           confirmBtn.addEventListener('click', async function(){
-            const ayId = this.dataset.academicYearId;
-            const rfid = this.dataset.rfid;
-            if(!ayId || !rfid) return showError('Missing data for release');
+            const id = this.dataset.id;
+            const tracking = this.dataset.tracking;
+            if(!id && !tracking) return alert('Missing data for release');
 
             try{
               const csrftoken = getCookie('csrftoken');
-              const res = await fetch('/pesostaff/release_reap/', {
+              const res = await fetch('/pesostaff/release_tupad/', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'X-CSRFToken': csrftoken || ''
                 },
-                body: JSON.stringify({ academic_year_id: ayId, rfid: rfid })
+                body: JSON.stringify({ id: id || null, tracking: tracking || null })
               });
-              if(!res.ok){
-                const txt = await res.text();
-                showError('Failed to release: ' + (txt || res.statusText));
-                return;
-              }
+              if(!res.ok){ const txt = await res.text(); alert('Failed to release: ' + (txt || res.statusText)); return; }
 
-              // on success: hide modal and update the corresponding button to Released
               try{ $('#confirmReleaseModal').modal('hide'); }catch(_){ }
-              const btn = document.querySelector(`.release-btn[data-academic-year-id="${ayId}"]`);
-              if(btn){ 
-                btn.textContent = 'Released'; 
-                btn.classList.remove('btn-primary'); 
-                btn.classList.add('btn-success'); 
-                btn.disabled = true; 
-                // also update the Released column in the same table row
-                try{
-                  const row = btn.closest('tr');
-                  if(row){
-                    const releasedCell = row.querySelector('td:nth-child(2)');
-                    if(releasedCell) releasedCell.textContent = 'Yes';
-                  }
-                }catch(e){/* ignore DOM update errors */}
-                // show a brief confirmation message under the subtitle
-                try{ showReleaseMessage('REAP released successfully.'); }catch(_){ }
+              const btn = document.querySelector(`.release-btn[data-id="${id}"]`) || document.querySelector(`.release-btn[data-tracking="${tracking}"]`);
+              if(btn){
+                btn.textContent = 'Released';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
+                btn.disabled = true;
+                try{ const row = btn.closest('tr'); if(row){ const releasedCell = row.querySelector('td:nth-child(2)'); if(releasedCell) releasedCell.textContent = 'Yes'; } }catch(e){}
+                try{ showReleaseMessage('TUPAD released successfully.'); }catch(_){ }
               }
-            }catch(err){ console.error(err); showError('Network error while releasing'); }
+            }catch(err){ console.error(err); alert('Network error while releasing'); }
           });
-        });
 
-        function showModal(){
-          // Using jQuery/bootstrap modal plugin (loaded in includes/scripts.html)
-          try{
-            $('#rfidModal').modal({backdrop:'static', keyboard:false});
-            $('#rfidModal').modal('show');
-            // focus input when modal shown
-            $('#rfidModal').on('shown.bs.modal', function () { $('#modalRfid').trigger('focus'); });
-          }catch(err){
-            // fallback: focus input directly
-            modalRfid.focus();
-          }
-        }
+          function showModal(){ try{ $('#rfidModal').modal({backdrop:'static', keyboard:false}); $('#rfidModal').modal('show'); $('#rfidModal').on('shown.bs.modal', function () { $('#modalRfid').trigger('focus'); }); }catch(err){ modalRfid.focus(); } }
 
-        // Bind events after DOM ready
-        document.addEventListener('DOMContentLoaded', function(){
-          // show modal on load
           showModal();
 
-          // bind Scan Again button to re-open RFID modal
           const openScanBtn = document.getElementById('openScanBtn');
-          if(openScanBtn){
-            openScanBtn.addEventListener('click', function(e){
-              e.preventDefault();
-              showModal();
-            });
-          }
+          if(openScanBtn){ openScanBtn.addEventListener('click', function(e){ e.preventDefault(); showModal(); }); }
 
-          // handle enter key on modal input
-          modalRfid.addEventListener('keydown', async function(e){
-            if(e.key === 'Enter'){
-              const ok = await fetchByRfid(modalRfid.value.trim());
-              if(ok){
-                // hide modal
-                try{ $('#rfidModal').modal('hide'); }catch(_){}
-                modalRfid.value = '';
-              }
-            }
-          });
+          modalRfid.addEventListener('keydown', async function(e){ if(e.key === 'Enter'){ const ok = await fetchByRfid(modalRfid.value.trim()); if(ok){ try{ $('#rfidModal').modal('hide'); }catch(_){ } modalRfid.value = ''; } } });
 
-          // cancel button hides modal
-          document.getElementById('cancelScan').addEventListener('click', function(){
-            try{ $('#rfidModal').modal('hide'); }catch(_){}
-          });
+          document.getElementById('cancelScan').addEventListener('click', function(){ try{ $('#rfidModal').modal('hide'); }catch(_){ } });
         });
       })();
     </script>
   </body>
 </html>
-
-
-  <!-- General JS Scripts -->
-   

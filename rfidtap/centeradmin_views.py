@@ -7,10 +7,41 @@ from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Status
+from django.utils import timezone
 
 
 def home(request):
-    return render(request,'center_admin/home.html')
+    """
+    Dashboard for Center Admin showing Bsrcenter counts:
+    total, pending (status_id=1), approved (status_id=2), rejected (status_id=3).
+    """
+    try:
+        # BSRcenter summary counts
+        bsr_total = Bsrcenter.objects.count()
+        bsr_pending = Bsrcenter.objects.filter(status_id=1).count()
+        bsr_approved = Bsrcenter.objects.filter(status_id=2).count()
+        bsr_rejected = Bsrcenter.objects.filter(status_id=3).count()
+
+        # Burial records (Bsrcenter_Burial) summary counts
+        burial_total = Bsrcenter_Burial.objects.count()
+        burial_pending = Bsrcenter_Burial.objects.filter(status_id=1).count()
+        burial_approved = Bsrcenter_Burial.objects.filter(status_id=2).count()
+        burial_rejected = Bsrcenter_Burial.objects.filter(status_id=3).count()
+    except Exception:
+        bsr_total = bsr_pending = bsr_approved = bsr_rejected = 0
+        burial_total = burial_pending = burial_approved = burial_rejected = 0
+
+    context = {
+        'bsr_total': bsr_total,
+        'bsr_pending': bsr_pending,
+        'bsr_approved': bsr_approved,
+        'bsr_rejected': bsr_rejected,
+        'burial_total': burial_total,
+        'burial_pending': burial_pending,
+        'burial_approved': burial_approved,
+        'burial_rejected': burial_rejected,
+    }
+    return render(request, 'center_admin/home.html', context)
 
 def APPROVAL_TABLE_MEDS(request):
     """
@@ -32,15 +63,27 @@ def APPROVAL_TABLE_MEDS(request):
         except Exception:
             target_status = 2
 
+        # record who actioned and when
+        user_id = getattr(request.user, 'id', None)
+        actioned_at = timezone.now()
+
         try:
             if bsrcenter_id:
                 # update only the specific row
-                Bsrcenter.objects.filter(id=bsrcenter_id).update(status_id=target_status)
+                Bsrcenter.objects.filter(id=bsrcenter_id).update(
+                    status_id=target_status,
+                    actioned_by_id=user_id,
+                    actioned_at=actioned_at,
+                )
             elif registration_id:
                 # fallback: update only one row for that registration (the earliest by id)
                 one = Bsrcenter.objects.filter(registration_id=registration_id).order_by('id').first()
                 if one:
-                    Bsrcenter.objects.filter(id=one.id).update(status_id=target_status)
+                    Bsrcenter.objects.filter(id=one.id).update(
+                        status_id=target_status,
+                        actioned_by_id=user_id,
+                        actioned_at=actioned_at,
+                    )
         except Exception:
             # tolerate errors and continue
             pass
@@ -243,13 +286,25 @@ def APPROVAL_TABLE_BURIALS(request):
         except Exception:
             target_status = 2
 
+        # record who actioned and when
+        user_id = getattr(request.user, 'id', None)
+        actioned_at = timezone.now()
+
         try:
             if bsrcenter_id:
-                Bsrcenter_Burial.objects.filter(id=bsrcenter_id).update(status_id=target_status)
+                Bsrcenter_Burial.objects.filter(id=bsrcenter_id).update(
+                    status_id=target_status,
+                    actioned_by_id=user_id,
+                    actioned_at=actioned_at,
+                )
             elif registration_id:
                 one = Bsrcenter_Burial.objects.filter(registration_id=registration_id).order_by('id').first()
                 if one:
-                    Bsrcenter_Burial.objects.filter(id=one.id).update(status_id=target_status)
+                    Bsrcenter_Burial.objects.filter(id=one.id).update(
+                        status_id=target_status,
+                        actioned_by_id=user_id,
+                        actioned_at=actioned_at,
+                    )
         except Exception:
             pass
         return redirect(request.path)

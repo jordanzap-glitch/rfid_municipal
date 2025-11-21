@@ -44,14 +44,16 @@ urlpatterns = [
     
     #municipal admin
     path('municipaladmin/home', munadmin_views.home, name='municipaladmin_home'),
-    path('municipaladmin/medicals', munadmin_views.medical_table, name='municipal_medical_table'),
-    path('municipaladmin/burials', munadmin_views.burial_table, name='municipal_burial_table'),
-    path('municipaladmin/export/medicals/', munadmin_views.export_medicals, name='municipal_export_medicals'),
-    path('municipaladmin/export/burials/', munadmin_views.export_burials, name='municipal_export_burials'),
-    path('municipaladmin/export/reap/', munadmin_views.export_reap, name='municipal_export_reap'),
-    path('municipaladmin/export/tupad/', munadmin_views.export_tupad, name='municipal_export_tupad'),
-    path('municipaladmin/reap', munadmin_views.Reap_tables, name='municipal_reap_table'),
-    path('municipaladmin/tupad', munadmin_views.tupad_table, name='municipal_tupad_table'),
+    path('municipaladmin/analytics_home', munadmin_views.analytics_home, name='municipaladmin_analytics_home'),
+    path('municipaladmin/medicals', munadmin_views.MEDICAL_TABLE, name='municipal_medical_table'),
+    path('municipaladmin/burials', munadmin_views.BURIAL_TABLE, name='municipal_burial_table'),
+    path('municipaladmin/reap', munadmin_views.REAP_TABLE, name='municipal_reap_table'),
+    path('municipaladmin/tupad', munadmin_views.TUPAD_TABLE, name='municipal_tupad_table'),
+    path('municipaladmin/export/medicals/', munadmin_views.EXPORT_MEDICALS, name='municipal_export_medicals'),
+    path('municipaladmin/export/burials/', munadmin_views.EXPORT_BURIALS, name='municipal_export_burials'),
+    path('municipaladmin/export/reap/', munadmin_views.EXPORT_REAPS, name='municipal_export_reap'),
+    path('municipaladmin/export/tupad/', munadmin_views.EXPORT_TUPADS, name='municipal_export_tupad'),
+
     
     
     #center admin
@@ -72,12 +74,18 @@ urlpatterns = [
     
     #peso admin
     path('adminpeso/home', pesoadmin_views.home, name='adminpeso_home'),
+    path('adminpeso/approval_table_reap', pesoadmin_views.APPROVAL_TABLE_REAP, name='approval_table_reap'),
+    path('adminpeso/get_pesoreap_info', pesoadmin_views.GET_PESO_REAP_INFO, name='get_pesoreap_info'),
+    path('adminpeso/approval_table_tupad', pesoadmin_views.APPROVAL_TABLE_TUPAD, name='approval_table_tupad'),
+    path('adminpeso/get_pesotupad_info', pesoadmin_views.GET_PESO_TUPAD_INFO, name='get_pesotupad_info'),
     
     #peso staff
     path('pesostaff/home', pesostaff_views.home, name='pesostaff_home'),
     path('pesostaff/reap_form', pesostaff_views.REAP_FORM, name='reap_form'),
     path('pesostaff/reap_release', pesostaff_views.REAP_RELEASE, name='reap_release'),
     path('pesostaff/release_reap/', pesostaff_views.RELEASE_REAP, name='release_reap'),
+    path('pesostaff/tupad_release', pesostaff_views.TUPAD_RELEASE, name='tupad_release'),
+    path('pesostaff/release_tupad/', pesostaff_views.RELEASE_TUPAD, name='release_tupad'),
     path('pesostaff/tupad_form', pesostaff_views.TUPAD_FORM, name='tupad_form'),
     path('get/registration_reap/<str:rfid>/', pesostaff_views.GET_REGISTRATION_REAP, name='get_registration_reap'),
     path('get/registration_tupad/<str:rfid>/', pesostaff_views.GET_REGISTRATION_TUPAD, name='get_registration_tupad'),  

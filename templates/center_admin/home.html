@@ -9,76 +9,152 @@
     </h1>
   </div>
   <div class="section-body">
+    <div class="mb-3 font-weight-bold">Center</div>
     <div class="row">
-      <!-- Sub Admin -->
+      <!-- BSRcenter Total -->
       <div class="col-lg-3 col-md-6 col-sm-6 col-12">
         <div class="card card-statistic-1">
           <div class="card-icon bg-primary">
-            <i class="fas fa-user-shield"></i>
+            <i class="fas fa-building"></i>
           </div>
           <div class="card-wrap">
             <div class="card-header">
-              <h4>Sub Admin</h4>
+              <h4>BSRcenter</h4>
             </div>
             <div class="card-body">
-              12
+              {{ bsr_total }}
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Pending -->
+      <!-- BSRcenter Pending -->
       <div class="col-lg-3 col-md-6 col-sm-6 col-12">
         <div class="card card-statistic-1">
           <div class="card-icon bg-warning">
-            <i class="fas fa-clock"></i>
+            <i class="fas fa-hourglass-half"></i>
           </div>
           <div class="card-wrap">
             <div class="card-header">
-              <h4>Pending</h4>
+              <h4>BSRcenter Pending</h4>
             </div>
             <div class="card-body">
-              7
+              {{ bsr_pending }}
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Reports -->
-      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
-        <div class="card card-statistic-1">
-          <div class="card-icon bg-info">
-            <i class="fas fa-file-alt"></i>
-          </div>
-          <div class="card-wrap">
-            <div class="card-header">
-              <h4>Reports</h4>
-            </div>
-            <div class="card-body">
-              25
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- New Registration -->
+      <!-- BSRcenter Approved -->
       <div class="col-lg-3 col-md-6 col-sm-6 col-12">
         <div class="card card-statistic-1">
           <div class="card-icon bg-success">
-            <i class="fas fa-user-plus"></i>
+            <i class="fas fa-check-circle"></i>
           </div>
           <div class="card-wrap">
             <div class="card-header">
-              <h4>New Registration</h4>
+              <h4>BSRcenter Approve</h4>
             </div>
             <div class="card-body">
-              5
+              {{ bsr_approved }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BSRcenter Rejected -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-danger">
+            <i class="fas fa-times-circle"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>BSRcenter Reject</h4>
+            </div>
+            <div class="card-body">
+              {{ bsr_rejected }}
             </div>
           </div>
         </div>
       </div>
     </div>
 
+  </div>
+</section>
+
+<section class="section mt-4">
+  <div class="section-body">
+    <div class="mb-3 font-weight-bold">Burials</div>
+    <div class="row">
+      <!-- Burials Total -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-primary">
+            <i class="fas fa-user-friends"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Burials Record</h4>
+            </div>
+            <div class="card-body">
+              {{ burial_total }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Burials Pending -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-warning">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Burials Record Pending</h4>
+            </div>
+            <div class="card-body">
+              {{ burial_pending }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Burials Approved -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-success">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Burial Record Approve</h4>
+            </div>
+            <div class="card-body">
+              {{ burial_approved }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Burials Rejected -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-danger">
+            <i class="fas fa-times-circle"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Burial Record Reject</h4>
+            </div>
+            <div class="card-body">
+              {{ burial_rejected }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 

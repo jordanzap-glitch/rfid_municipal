@@ -15,7 +15,7 @@ import json
 
 
 def home(request):
-    return render(request,'peso_staff/home.html')
+    return render(request, 'peso_staff/home.html')
 
 def REAP_FORM(request):
     """Handle REAP form for PESO staff.
@@ -66,7 +66,8 @@ def REAP_FORM(request):
         # If no reap_type selected, choose default based on previous assistance: New if none, Renew if exists
         if not reap_type_id:
             try:
-                prev_exists = Peso_reap.objects.filter(registration=registration).exists()
+                # use id-based filter to avoid extra joins
+                prev_exists = Peso_reap.objects.filter(registration_id=registration.id).exists()
                 desired = 'New' if not prev_exists else 'Renew'
                 rt = Reap_type.objects.filter(type_name__iexact=desired).first()
                 if not rt:
@@ -92,20 +93,20 @@ def REAP_FORM(request):
         #   in that same academic year with status == 1 (pending).
         # - Allow submission if the existing REAP in the same AY has status 2 (approved)
         #   or 3 (rejected) so the user can resubmit.
-        # Check unreleased first
-        if Peso_reap.objects.filter(registration=registration, is_released=False).exists():
+        # Check unreleased first (use id-based filter)
+        if Peso_reap.objects.filter(registration_id=registration.id, is_released=False).exists():
             messages.error(request, 'Cannot save REAP: there is an unreleased REAP for this registration.')
             return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
 
         # If there's an active academic year, check for pending (status=1) submissions
         if active_ay:
-            pending_same_ay = Peso_reap.objects.filter(registration=registration, Academic_year=active_ay, status_id=1).exists()
+            # use id-based lookups to avoid unnecessary joins
+            pending_same_ay = Peso_reap.objects.filter(registration_id=registration.id, Academic_year_id=active_ay.id, status_id=1).exists()
             if pending_same_ay:
                 messages.error(request, 'Cannot save REAP: a pending REAP already exists for the active academic year.')
                 return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
 
         # Create the Peso_reap record
-        from django.db import transaction, IntegrityError
         reap = None
         try:
             with transaction.atomic():
@@ -116,28 +117,43 @@ def REAP_FORM(request):
                     return f"PESO-R-{uuid.uuid4().hex[:10].upper()}"
 
                 tracking = _gen_tracking()
-                # ensure uniqueness
-                while Peso_reap.objects.filter(tracking_number=tracking).exists():
-                    tracking = _gen_tracking()
 
-                # create record (date fields removed)
-                reap = Peso_reap.objects.create(
-                    registration=registration,
-                    tracking_number=tracking,
-                    biodata=biodata,
-                    certificate_of_reg=cert_registration,
-                    certificate_of_grades=cert_grades,
-                    barangay_indigency=barangay_indigency,
-                    barangay_recidency=barangay_recidency,
-                    official_receipt=official_receipt,
-                    processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
-                    # date_claimed/date_claim_expiry intentionally omitted
-                    # attach the active academic year if available (use server-side active_ay for safety)
-                    Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
-                    reap_type_id=(reap_type_id or None),
-                )
+                # create record (date fields removed). Instead of looping, try create and retry once on IntegrityError.
+                try:
+                    reap = Peso_reap.objects.create(
+                        registration=registration,
+                        tracking_number=tracking,
+                        biodata=biodata,
+                        certificate_of_reg=cert_registration,
+                        certificate_of_grades=cert_grades,
+                        barangay_indigency=barangay_indigency,
+                        barangay_recidency=barangay_recidency,
+                        official_receipt=official_receipt,
+                        processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
+                        # date_claimed/date_claim_expiry intentionally omitted
+                        # attach the active academic year if available (use server-side active_ay for safety)
+                        Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
+                        reap_type_id=(reap_type_id or None),
+                    )
+                except IntegrityError:
+                    # rare collision on tracking_number; try once with a fresh tracking value
+                    tracking = _gen_tracking()
+                    reap = Peso_reap.objects.create(
+                        registration=registration,
+                        tracking_number=tracking,
+                        biodata=biodata,
+                        certificate_of_reg=cert_registration,
+                        certificate_of_grades=cert_grades,
+                        barangay_indigency=barangay_indigency,
+                        barangay_recidency=barangay_recidency,
+                        official_receipt=official_receipt,
+                        processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
+                        Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
+                        reap_type_id=(reap_type_id or None),
+                    )
+
                 # Mark previous assistance records for this registration as having a "next" (there is a newer assistance)
-                Peso_reap.objects.filter(registration=registration).exclude(pk=reap.pk).update(next=True)
+                Peso_reap.objects.filter(registration_id=registration.id).exclude(pk=reap.pk).update(next=True)
         except IntegrityError:
             messages.error(request, 'Database error while saving REAP.')
 
@@ -160,7 +176,7 @@ def REAP_FORM(request):
             }
             return redirect('reap_form')
 
-            return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
+        return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
 
     # GET
     # Pop recent_reap to show once if template uses it
@@ -180,8 +196,10 @@ def TUPAD_FORM(request):
         rfid = request.POST.get('rfid')
         beneficiaries = request.POST.get('beneficiaries', '')
         skill_training_val = request.POST.get('skill_training', '')
-        date_claimed = request.POST.get('date_claimed')
-        date_claim_expiry = request.POST.get('date_claim_expiry')
+        # form field names updated: use `date_issued` / `date_issued_expiry` on the form,
+        # but store them on the model's `date_claimed` / `date_claim_expiry` fields.
+        date_issued = request.POST.get('date_issued')
+        date_issued_expiry = request.POST.get('date_issued_expiry')
 
         # Normalize beneficiaries into a single string (one per line -> comma separated)
         # Trim whitespace and collapse empty lines
@@ -200,31 +218,32 @@ def TUPAD_FORM(request):
         today = date.today()
         active_exists = Peso_tupad.objects.filter(registration=registration).filter(
             Q(is_released=False) |
-            (Q(status_id__in=[1, 2]) & (Q(date_claim_expiry__isnull=True) | Q(date_claim_expiry__gte=today)))
+            (Q(status_id__in=[1, 2]) & (Q(date_issued_expiry__isnull=True) | Q(date_issued_expiry__gte=today)))
         ).exists()
         if active_exists:
             messages.error(request, 'Cannot save TUPAD: there is an existing active TUPAD (pending/approved or not released).')
             return render(request, 'peso_staff/tupad_form.html', {'skills': skills})
 
-        # Validate required fields (date_claim_expiry and skill)
-        if not date_claim_expiry:
+        # Validate required fields (date_issued_expiry and skill)
+        if not date_issued_expiry:
             messages.error(request, 'Date claim expiry is required.')
             return render(request, 'peso_staff/tupad_form.html', {'skills': skills})
 
         # parse dates
-        date_claimed_obj = None
-        if date_claimed:
+        # parse provided issued dates into date objects (map to model fields)
+        date_issued_obj = None
+        if date_issued:
             try:
-                date_claimed_obj = _dt.strptime(date_claimed, '%Y-%m-%d').date()
+                date_issued_obj = _dt.strptime(date_issued, '%Y-%m-%d').date()
             except Exception:
-                date_claimed_obj = None
+                date_issued_obj = None
 
-        date_claim_expiry_obj = None
-        if date_claim_expiry:
+        date_issued_expiry_obj = None
+        if date_issued_expiry:
             try:
-                date_claim_expiry_obj = _dt.strptime(date_claim_expiry, '%Y-%m-%d').date()
+                date_issued_expiry_obj = _dt.strptime(date_issued_expiry, '%Y-%m-%d').date()
             except Exception:
-                date_claim_expiry_obj = None
+                date_issued_expiry_obj = None
 
         # Simplified skills handling:
         # Prefer the form to submit the Skills_training.id. We accept an id string
@@ -268,9 +287,9 @@ def TUPAD_FORM(request):
                 tupad = Peso_tupad.objects.create(
                     registration=registration,
                     tracking_number=tracking,
-                    # date_claimed field has auto_now_add but we still allow overriding
-                    date_claimed=date_claimed_obj if date_claimed_obj else None,
-                    date_claim_expiry=date_claim_expiry_obj if date_claim_expiry_obj else None,
+                    # model fields for TUPAD are `date_issued` / `date_issued_expiry`.
+                    date_issued=date_issued_obj if date_issued_obj else None,
+                    date_issued_expiry=date_issued_expiry_obj if date_issued_expiry_obj else None,
                     name_of_beneficiary=name_of_beneficiary,
                     # insert FK by id when available to avoid extra object assignment
                     skills_training_id=skill_id if skill_id else None,
@@ -289,8 +308,9 @@ def TUPAD_FORM(request):
                 'name_of_beneficiary': tupad.name_of_beneficiary,
                 # use resolved skill_name (falls back to empty string)
                 'skills_training': skill_name,
-                'date_claimed': tupad.date_claimed.strftime('%Y-%m-%d') if getattr(tupad, 'date_claimed', None) else '',
-                'date_claim_expiry': tupad.date_claim_expiry.strftime('%Y-%m-%d') if getattr(tupad, 'date_claim_expiry', None) else '',
+                # store under the new "issued" keys for template convenience
+                'date_issued': tupad.date_issued.strftime('%Y-%m-%d') if getattr(tupad, 'date_issued', None) else '',
+                'date_issued_expiry': tupad.date_issued_expiry.strftime('%Y-%m-%d') if getattr(tupad, 'date_issued_expiry', None) else '',
             }
             return redirect('tupad_form')
 
@@ -303,15 +323,7 @@ def TUPAD_FORM(request):
     return render(request, 'peso_staff/tupad_form.html', {'recent_tupad': recent_tupad, 'skills': skills})
 
 
-def REAP_RELEASE(request):
-    """Standalone REAP release page.
 
-    Renders a minimal page (does NOT extend base.html). The page contains
-    a single RFID input that, when filled (RFID tap), will call the
-    existing `GET_REGISTRATION_REAP` endpoint and populate a simple
-    release card/modal with registration and REAP details.
-    """
-    return render(request, 'peso_staff/reap_release.html')
 
 @require_GET
 @csrf_exempt
@@ -385,6 +397,10 @@ def GET_REGISTRATION_REAP(request, rfid):
         return JsonResponse({'error': 'Not found'}, status=404)
 
 
+
+def REAP_RELEASE(request):
+    return render(request, 'peso_staff/reap_release.html')
+
 @require_POST
 @login_required
 def RELEASE_REAP(request):
@@ -431,6 +447,10 @@ def RELEASE_REAP(request):
     return JsonResponse({'success': True})
 
 
+def TUPAD_RELEASE(request):
+    return render(request, 'peso_staff/tupad_release.html')
+
+
 @require_GET
 @csrf_exempt
 def GET_REGISTRATION_TUPAD(request, rfid):
@@ -466,14 +486,53 @@ def GET_REGISTRATION_TUPAD(request, rfid):
                 'tracking_number': prev.tracking_number if hasattr(prev, 'tracking_number') else '',
                 'name_of_beneficiary': prev.name_of_beneficiary or '',
                 'skills_training': prev.skills_training.Skills_name if getattr(prev, 'skills_training', None) else '',
-                'date_claimed': prev.date_claimed.strftime('%Y-%m-%d') if getattr(prev, 'date_claimed', None) else '',
-                'date_claim_expiry': prev.date_claim_expiry.strftime('%Y-%m-%d') if getattr(prev, 'date_claim_expiry', None) else '',
+                'date_issued': prev.date_issued.strftime('%Y-%m-%d') if getattr(prev, 'date_issued', None) else '',
+                'date_issued_expiry': prev.date_issued_expiry.strftime('%Y-%m-%d') if getattr(prev, 'date_issued_expiry', None) else '',
                 'is_released': bool(prev.is_released) if hasattr(prev, 'is_released') else False,
+                'id': prev.id,
             })
         data['previous_tupad_assistance'] = prev_list
 
         return JsonResponse(data)
     except Registration.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
+
+
+@require_POST
+@login_required
+def RELEASE_TUPAD(request):
+    """Handle TUPAD release POST: expects JSON {tracking: <tracking_number>} or {id: <tupad_id>}.
+
+    Marks Peso_tupad.is_released = True for the matching record.
+    Returns JSON success or error status.
+    """
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid_json'}, status=400)
+
+    tracking = payload.get('tracking')
+    tupad_id = payload.get('id')
+
+    if not tracking and not tupad_id:
+        return JsonResponse({'error': 'missing_identifier'}, status=400)
+
+    tupad = None
+    try:
+        if tupad_id:
+            tupad = Peso_tupad.objects.get(pk=tupad_id)
+        elif tracking:
+            tupad = Peso_tupad.objects.get(tracking_number=tracking)
+    except Peso_tupad.DoesNotExist:
+        return JsonResponse({'error': 'not_found'}, status=404)
+
+    if getattr(tupad, 'is_released', False):
+        return JsonResponse({'error': 'already_released'}, status=400)
+
+    tupad.is_released = True
+    tupad.processed_by_id = request.user.id if request.user and request.user.is_authenticated else tupad.processed_by_id
+    tupad.save()
+
+    return JsonResponse({'success': True})
 
    
