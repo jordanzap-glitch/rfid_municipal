@@ -86,19 +86,19 @@ DATABASES = {
 }
 
 #Xampp MySQL Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'municipal_db',
-       'HOST': '127.0.0.1',
-       'PORT': '3306',
-        'USER': 'root',
-        'PASSWORD': '',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES,STRICT_ALL_TABLES'"
-        },
-    }
-}  
+#DATABASES = {
+ #   'default': {
+  #      'ENGINE': 'django.db.backends.mysql',
+   #     'NAME': 'municipal_db',
+    #   'HOST': '127.0.0.1',
+    #   'PORT': '3306',
+     #   'USER': 'root',
+      #  'PASSWORD': '',
+       # 'OPTIONS': {
+       #     'init_command': "SET sql_mode='STRICT_TRANS_TABLES,STRICT_ALL_TABLES'"
+       # },
+    #}
+#}  
 # Pa
 
 # Password validation
