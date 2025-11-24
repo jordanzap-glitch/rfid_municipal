@@ -51,9 +51,50 @@ def home(request):
 
 def analytics_home(request):
     # Compute REAP release progress metrics for analytics card
+    # Support optional filtering by Academic Year via GET param `academic_year`
+    # include related Semester name so dropdown can show year + semester
+    academic_years = []
     try:
-        reap_total = Peso_reap.objects.count()
-        reap_released = Peso_reap.objects.filter(is_released=True).count()
+        import datetime
+        for ay in Academic_year.objects.select_related('semester').order_by('-year'):
+            raw_year = getattr(ay, 'year', None)
+            # Normalize to a short year label (e.g. '2024')
+            year_label = ''
+            try:
+                if isinstance(raw_year, (datetime.date, datetime.datetime)):
+                    year_label = str(raw_year.year)
+                elif isinstance(raw_year, int):
+                    year_label = str(raw_year)
+                elif isinstance(raw_year, str):
+                    # If stored as 'YYYY-MM-DD' or similar, take the first 4 chars or segment
+                    if len(raw_year) >= 4 and raw_year[:4].isdigit():
+                        year_label = raw_year[:4]
+                    else:
+                        year_label = raw_year
+                else:
+                    year_label = str(raw_year) if raw_year is not None else ''
+            except Exception:
+                year_label = str(raw_year) if raw_year is not None else ''
+
+            academic_years.append({
+                'id': getattr(ay, 'id', None),
+                'year': year_label,
+                'sem_name': getattr(getattr(ay, 'semester', None), 'sem_name', '')
+            })
+    except Exception:
+        academic_years = []
+    selected_academic_year = request.GET.get('academic_year')
+    try:
+        selected_academic_year_id = int(selected_academic_year) if selected_academic_year else None
+    except Exception:
+        selected_academic_year_id = None
+
+    try:
+        reap_qs = Peso_reap.objects.all()
+        if selected_academic_year_id:
+            reap_qs = reap_qs.filter(Academic_year_id=selected_academic_year_id)
+        reap_total = reap_qs.count()
+        reap_released = reap_qs.filter(is_released=True).count()
     except Exception:
         reap_total = 0
         reap_released = 0
@@ -67,6 +108,8 @@ def analytics_home(request):
         'reap_total': reap_total,
         'reap_released': reap_released,
         'reap_released_pct': reap_released_pct,
+        'academic_years': academic_years,
+        'selected_academic_year_id': selected_academic_year_id,
     }
 
     # Compute TUPAD release progress metrics for analytics card
@@ -354,6 +397,7 @@ def TUPAD_TABLE(request):
             'processed_by': processed_by_name,
             'is_released': bool(getattr(obj, 'is_released', False)),
             'date_claimed': str(getattr(obj, 'date_claimed', None)) if getattr(obj, 'date_claimed', None) else None,
+            'date_issued': str(getattr(obj, 'date_issued', None)) if getattr(obj, 'date_issued', None) else None,
         })
 
     return render(request, 'mun_admin/tupad_table.html', {'bsrcenter_data': data})
@@ -362,16 +406,32 @@ def TUPAD_TABLE(request):
 def EXPORT_MEDICALS(request):
     """Export Bsrcenter (Medicals) as CSV"""
     # prefetch related medicines through Bsrcenter_meds to avoid N+1 queries
-    qs = Bsrcenter.objects.select_related('registration', 'processed_by').prefetch_related('bsrcenter_meds_set__medicines').all()
+    qs = Bsrcenter.objects.select_related('registration', 'processed_by', 'actioned_by').prefetch_related('bsrcenter_meds_set__medicines').all()
+    # optional status filter from querystring (e.g. ?status=2 for approved)
+    status = request.GET.get('status')
+    filename_suffix = ''
+    if status:
+        try:
+            status_int = int(status)
+            qs = qs.filter(status_id=status_int)
+            if status_int == 2:
+                filename_suffix = '_approved'
+        except Exception:
+            pass
+
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="medicals.csv"'
+    response['Content-Disposition'] = f'attachment; filename="medicals{filename_suffix}.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Barangay', 'Municipality', 'Date Claimed', 'Amount', 'Status', 'Processed By', 'Medicines'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Barangay', 'Municipality', 'Date Claimed', 'Amount', 'Status', 'Processed By', 'Approved/Rejected By', 'Medicines'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
         if obj.processed_by:
             processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        actioned_by_name = ''
+        actioned_by_obj = getattr(obj, 'actioned_by', None)
+        if actioned_by_obj:
+            actioned_by_name = f"{getattr(actioned_by_obj, 'first_name', '')} {getattr(actioned_by_obj, 'last_name', '')}".strip()
         # collect medicines for this bsrcenter (from Bsrcenter_meds)
         meds_qs = getattr(obj, 'bsrcenter_meds_set', None)
         meds_list = []
@@ -392,6 +452,7 @@ def EXPORT_MEDICALS(request):
             smart_str(obj.amount),
             smart_str(status_name),
             smart_str(processed_by),
+            smart_str(actioned_by_name),
             smart_str(meds_str),
         ])
     return response
@@ -401,16 +462,32 @@ def EXPORT_MEDICALS(request):
 @login_required
 def EXPORT_BURIALS(request):
     """Export Bsrcenter_Burial as CSV"""
-    qs = Bsrcenter_Burial.objects.select_related('registration', 'processed_by').all()
+    qs = Bsrcenter_Burial.objects.select_related('registration', 'processed_by', 'actioned_by').all()
+    # optional status filter from querystring
+    status = request.GET.get('status')
+    filename_suffix = ''
+    if status:
+        try:
+            status_int = int(status)
+            qs = qs.filter(status_id=status_int)
+            if status_int == 2:
+                filename_suffix = '_approved'
+        except Exception:
+            pass
+
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="burials.csv"'
+    response['Content-Disposition'] = f'attachment; filename="burials{filename_suffix}.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Deceased Name', 'Relationship', 'Date Claimed', 'Amount', 'Status', 'Processed By'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Deceased Name', 'Relationship', 'Date Claimed', 'Amount', 'Status', 'Processed By', 'Approved/Rejected By'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
         if obj.processed_by:
             processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+        actioned_by_name = ''
+        actioned_by_obj = getattr(obj, 'actioned_by', None)
+        if actioned_by_obj:
+            actioned_by_name = f"{getattr(actioned_by_obj, 'first_name', '')} {getattr(actioned_by_obj, 'last_name', '')}".strip()
         status_name = getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else ''
         writer.writerow([
             smart_str(obj.tracking_number or ''),
@@ -422,6 +499,7 @@ def EXPORT_BURIALS(request):
             smart_str(obj.amount),
             smart_str(status_name),
             smart_str(processed_by),
+            smart_str(actioned_by_name),
         ])
     return response
 
@@ -431,11 +509,23 @@ def EXPORT_BURIALS(request):
 def EXPORT_REAPS(request):
     """Export Peso_reap as CSV"""
     # include Academic_year and its Semester to export human-readable year and semester
-    qs = Peso_reap.objects.select_related('registration', 'processed_by', 'reap_type', 'Academic_year__semester').all()
+    qs = Peso_reap.objects.select_related('registration', 'processed_by', 'reap_type', 'Academic_year__semester', 'actioned_by').all()
+    # optional status filter from querystring
+    status = request.GET.get('status')
+    filename_suffix = ''
+    if status:
+        try:
+            status_int = int(status)
+            qs = qs.filter(status_id=status_int)
+            if status_int == 2:
+                filename_suffix = '_approved'
+        except Exception:
+            pass
+
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="reap.csv"'
+    response['Content-Disposition'] = f'attachment; filename="reap{filename_suffix}.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Reap Type', 'Academic Year', 'Semester', 'Date Added', 'Is Released', 'Status', 'Processed By'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Reap Type', 'Academic Year', 'Semester', 'Date Added', 'Is Released', 'Status', 'Processed By', 'Approved/Rejected By'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
@@ -450,6 +540,10 @@ def EXPORT_REAPS(request):
             # related Semester via select_related
             semester_name = getattr(getattr(academic_obj, 'semester', None), 'sem_name', '')
         status_name = getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else ''
+        actioned_by_name = ''
+        actioned_by_obj = getattr(obj, 'actioned_by', None)
+        if actioned_by_obj:
+            actioned_by_name = f"{getattr(actioned_by_obj, 'first_name', '')} {getattr(actioned_by_obj, 'last_name', '')}".strip()
         writer.writerow([
             smart_str(obj.tracking_number or ''),
             smart_str(reg.last_name if reg else ''),
@@ -461,6 +555,7 @@ def EXPORT_REAPS(request):
             smart_str(obj.is_released),
             smart_str(status_name),
             smart_str(processed_by),
+            smart_str(actioned_by_name),
         ])
     return response
 
@@ -469,27 +564,44 @@ def EXPORT_REAPS(request):
 @login_required
 def EXPORT_TUPADS(request):
     """Export Peso_tupad as CSV"""
-    qs = Peso_tupad.objects.select_related('registration', 'processed_by', 'skills_training').all()
+    qs = Peso_tupad.objects.select_related('registration', 'processed_by', 'skills_training', 'actioned_by').all()
+    # optional status filter from querystring
+    status = request.GET.get('status')
+    filename_suffix = ''
+    if status:
+        try:
+            status_int = int(status)
+            qs = qs.filter(status_id=status_int)
+            if status_int == 2:
+                filename_suffix = '_approved'
+        except Exception:
+            pass
+
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="tupad.csv"'
+    response['Content-Disposition'] = f'attachment; filename="tupad{filename_suffix}.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Beneficiary Name', 'Skills Training', 'Date Claimed', 'Is Released', 'Status', 'Processed By'])
+    writer.writerow(['Tracking Number', 'Last Name', 'First Name', 'Beneficiary Name', 'Skills Training', 'Date Issued', 'Is Released', 'Status', 'Processed By', 'Approved/Rejected By'])
     for obj in qs:
         reg = obj.registration
         processed_by = ''
         if obj.processed_by:
             processed_by = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
         status_name = getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else ''
+        actioned_by_name = ''
+        actioned_by_obj = getattr(obj, 'actioned_by', None)
+        if actioned_by_obj:
+            actioned_by_name = f"{getattr(actioned_by_obj, 'first_name', '')} {getattr(actioned_by_obj, 'last_name', '')}".strip()
         writer.writerow([
             smart_str(obj.tracking_number or ''),
             smart_str(reg.last_name if reg else ''),
             smart_str(reg.first_name if reg else ''),
             smart_str(obj.name_of_beneficiary),
             smart_str(obj.skills_training.Skills_name if obj.skills_training else ''),
-            smart_str(obj.date_claimed),
+            smart_str(obj.date_issued),
             smart_str(obj.is_released),
             smart_str(status_name),
             smart_str(processed_by),
+            smart_str(actioned_by_name),
         ])
     return response
 

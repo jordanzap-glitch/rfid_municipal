@@ -11,11 +11,20 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-header">
-                        <h4>REAP Release Progress</h4>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">REAP Release Progress</h4>
+                        <form id="reapFilterForm" method="get" class="d-flex align-items-center flex-nowrap" style="gap:8px; margin:0;">
+                            <label class="mb-0 mr-2 small text-muted">A.y</label>
+                            <select name="academic_year" class="form-control form-control-sm" onchange="this.form.submit()">
+                                <option value="">All Years</option>
+                                {% for y in academic_years %}
+                                    <option value="{{ y.id }}" {% if selected_academic_year_id == y.id %}selected{% endif %}>{{ y.year }}{% if y.sem_name %} - {{ y.sem_name }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between small mb-1">
+                        <div class="d-flex justify-content-between small mb-1 align-items-center">
                             <div>Released</div>
                             <div>{{ reap_released|default:0 }} / {{ reap_total|default:0 }}</div>
                         </div>

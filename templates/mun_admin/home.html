@@ -276,6 +276,7 @@ window.addEventListener('load', function(){
                 <a href="#" data-toggle="dropdown" class="btn btn-icon btn-light dropdown-toggle"><i class="fas fa-download"></i></a>
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_medicals' %}" class="dropdown-item">Export CSV</a>
+                  <a href="{% url 'municipal_export_medicals' %}?status=2" class="dropdown-item">Export Approved</a>
                 </div>
               </div>
             </div>
@@ -301,6 +302,7 @@ window.addEventListener('load', function(){
                 <a href="#" data-toggle="dropdown" class="btn btn-icon btn-light dropdown-toggle"><i class="fas fa-download"></i></a>
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_burials' %}" class="dropdown-item">Export CSV</a>
+                  <a href="{% url 'municipal_export_burials' %}?status=2" class="dropdown-item">Export Approved</a>
                 </div>
               </div>
             </div>
@@ -326,6 +328,7 @@ window.addEventListener('load', function(){
                 <a href="#" data-toggle="dropdown" class="btn btn-icon btn-light dropdown-toggle"><i class="fas fa-download"></i></a>
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_reap' %}" class="dropdown-item">Export CSV</a>
+                  <a href="{% url 'municipal_export_reap' %}?status=2" class="dropdown-item">Export Approved</a>
                 </div>
               </div>
             </div>
@@ -351,6 +354,7 @@ window.addEventListener('load', function(){
                 <a href="#" data-toggle="dropdown" class="btn btn-icon btn-light dropdown-toggle"><i class="fas fa-download"></i></a>
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_tupad' %}" class="dropdown-item">Export CSV</a>
+                  <a href="{% url 'municipal_export_tupad' %}?status=2" class="dropdown-item">Export Approved</a>
                 </div>
               </div>
             </div>

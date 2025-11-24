@@ -14,15 +14,54 @@ from decimal import Decimal, InvalidOperation
 
 
 def home(request):
+    # Allow filtering REAP metrics by Academic Year (via GET ?academic_year=<id>)
+    academic_year_param = request.GET.get('academic_year') or None
+    try:
+        selected_academic_year_id = int(academic_year_param) if academic_year_param else None
+    except Exception:
+        selected_academic_year_id = None
+
+    # Build a list of academic years for the dropdown (display only year + semester)
+    academic_years = []
+    try:
+        for ay in Academic_year.objects.select_related('semester').order_by('-id').all():
+            ay_val = getattr(ay, 'year', None)
+            # Normalize year display: prefer numeric year part if stored as date/string like 'YYYY-..'
+            if ay_val is None:
+                year_str = ''
+            else:
+                try:
+                    if hasattr(ay_val, 'year'):
+                        year_str = str(ay_val.year)
+                    else:
+                        s = str(ay_val)
+                        year_str = s.split('-')[0] if '-' in s else s
+                except Exception:
+                    year_str = str(ay_val)
+
+            sem_name = getattr(ay.semester, 'sem_name', '') if getattr(ay, 'semester', None) else ''
+            display = f"{year_str} - {sem_name}" if sem_name else year_str
+            academic_years.append({'id': getattr(ay, 'id', None), 'display': display})
+    except Exception:
+        academic_years = []
+
+    # Base queryset for REAP; apply academic year filter if provided
+    base_reap_qs = Peso_reap.objects.all()
+    if selected_academic_year_id:
+        try:
+            base_reap_qs = base_reap_qs.filter(Academic_year_id=selected_academic_year_id)
+        except Exception:
+            base_reap_qs = base_reap_qs
+
     # Dashboard counts for REAP
     try:
-        reap_total = Peso_reap.objects.count()
-        reap_pending = Peso_reap.objects.filter(status_id=1).count()
-        reap_approved = Peso_reap.objects.filter(status_id=2).count()
-        reap_rejected = Peso_reap.objects.filter(status_id=3).count()
+        reap_total = base_reap_qs.count()
+        reap_pending = base_reap_qs.filter(status_id=1).count()
+        reap_approved = base_reap_qs.filter(status_id=2).count()
+        reap_rejected = base_reap_qs.filter(status_id=3).count()
         # Count of REAP records that have been released (is_released == True)
-        reap_released_count = Peso_reap.objects.filter(is_released=True).count()
-        # TUPAD dashboard counts
+        reap_released_count = base_reap_qs.filter(is_released=True).count()
+        # TUPAD dashboard counts (unchanged, not filtered by academic year)
         tupad_total = Peso_tupad.objects.count()
         tupad_pending = Peso_tupad.objects.filter(status_id=1).count()
         tupad_approved = Peso_tupad.objects.filter(status_id=2).count()
@@ -58,6 +97,8 @@ def home(request):
         'tupad_rejected': tupad_rejected,
         'tupad_released_count': tupad_released_count,
         'tupad_released_pct': tupad_released_pct,
+        'academic_years': academic_years,
+        'selected_academic_year_id': selected_academic_year_id,
     }
     return render(request,'peso_admin/home.html', context)
 
