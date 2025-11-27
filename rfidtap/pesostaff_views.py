@@ -10,6 +10,7 @@ from django.db.models import Q
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Peso_reap, Skills_training, Peso_tupad, Academic_year, Reap_type, Civil_status, Occupation
 from django.views.decorators.csrf import csrf_exempt
 from datetime import date, datetime as _dt
+from django.utils import timezone
 from decimal import Decimal, InvalidOperation
 import json
 
@@ -152,8 +153,8 @@ def REAP_FORM(request):
                         reap_type_id=(reap_type_id or None),
                     )
 
-                # Mark previous assistance records for this registration as having a "next" (there is a newer assistance)
-                Peso_reap.objects.filter(registration_id=registration.id).exclude(pk=reap.pk).update(next=True)
+                # Previously we marked previous assistance records with `next=True` here.
+                # This behavior was removed: do not update the `next` flag when creating a new REAP.
         except IntegrityError:
             messages.error(request, 'Database error while saving REAP.')
 
@@ -389,6 +390,11 @@ def GET_REGISTRATION_REAP(request, rfid):
                 'id': prev.id,
                 'is_released': bool(prev.is_released) if hasattr(prev, 'is_released') else False,
                 'next': bool(prev.next) if hasattr(prev, 'next') else False,
+                'released_by_id': prev.released_by.id if getattr(prev, 'released_by', None) else None,
+                'released_by_first_name': prev.released_by.first_name if getattr(prev, 'released_by', None) else '',
+                'released_by_last_name': prev.released_by.last_name if getattr(prev, 'released_by', None) else '',
+                'released_by_name': (f"{prev.released_by.first_name} {prev.released_by.last_name}".strip()) if getattr(prev, 'released_by', None) else '',
+                'released_at': prev.released_at.strftime('%Y-%m-%d %H:%M:%S') if getattr(prev, 'released_at', None) else '',
             })
         data['previous_reap_assistance'] = prev_list
 
@@ -439,12 +445,50 @@ def RELEASE_REAP(request):
 
     if getattr(reap, 'is_released', False):
         return JsonResponse({'error': 'already_released'}, status=400)
+    # Mark this REAP as released and update previous REAP records for the
+    # same registration so they are flagged with `next = True`.
+    try:
+        with transaction.atomic():
+            reap.is_released = True
+            # Do not overwrite processed_by_id on release. Instead record who
+            # released this REAP and when using `released_by` and `released_at`.
+            try:
+                if request.user and request.user.is_authenticated:
+                    reap.released_by_id = request.user.id
+                reap.released_at = timezone.now()
+            except Exception:
+                # If the model doesn't have these fields, skip silently but
+                # continue with the release to avoid breaking the flow.
+                pass
+            reap.save()
 
-    reap.is_released = True
-    reap.processed_by_id = request.user.id if request.user and request.user.is_authenticated else reap.processed_by_id
-    reap.save()
+            # Set `next = True` on previous REAPs for the same registration.
+            # We consider "previous" as records with smaller primary key (id).
+            try:
+                Peso_reap.objects.filter(registration_id=reap.registration_id, id__lt=reap.id).update(next=True)
+            except Exception:
+                # Don't fail the release if updating the `next` flag fails;
+                # log to console for debugging.
+                import logging
+                logging.exception('Failed to update previous Peso_reap.next flags')
+    except Exception:
+        return JsonResponse({'error': 'db_error'}, status=500)
 
-    return JsonResponse({'success': True})
+    # Return release metadata for client convenience
+    released_by_id = reap.released_by.id if getattr(reap, 'released_by', None) else None
+    released_by_first_name = reap.released_by.first_name if getattr(reap, 'released_by', None) else ''
+    released_by_last_name = reap.released_by.last_name if getattr(reap, 'released_by', None) else ''
+    released_by_name = (f"{released_by_first_name} {released_by_last_name}".strip()) if (released_by_first_name or released_by_last_name) else ''
+    released_at = reap.released_at.strftime('%Y-%m-%d %H:%M:%S') if getattr(reap, 'released_at', None) else ''
+
+    return JsonResponse({
+        'success': True,
+        'released_by_id': released_by_id,
+        'released_by_first_name': released_by_first_name,
+        'released_by_last_name': released_by_last_name,
+        'released_by_name': released_by_name,
+        'released_at': released_at,
+    })
 
 
 def TUPAD_RELEASE(request):
@@ -490,6 +534,11 @@ def GET_REGISTRATION_TUPAD(request, rfid):
                 'date_issued_expiry': prev.date_issued_expiry.strftime('%Y-%m-%d') if getattr(prev, 'date_issued_expiry', None) else '',
                 'is_released': bool(prev.is_released) if hasattr(prev, 'is_released') else False,
                 'id': prev.id,
+                'released_by_id': prev.released_by.id if getattr(prev, 'released_by', None) else None,
+                'released_by_first_name': prev.released_by.first_name if getattr(prev, 'released_by', None) else '',
+                'released_by_last_name': prev.released_by.last_name if getattr(prev, 'released_by', None) else '',
+                'released_by_name': (f"{prev.released_by.first_name} {prev.released_by.last_name}".strip()) if getattr(prev, 'released_by', None) else '',
+                'released_at': prev.released_at.strftime('%Y-%m-%d %H:%M:%S') if getattr(prev, 'released_at', None) else '',
             })
         data['previous_tupad_assistance'] = prev_list
 
@@ -530,9 +579,29 @@ def RELEASE_TUPAD(request):
         return JsonResponse({'error': 'already_released'}, status=400)
 
     tupad.is_released = True
-    tupad.processed_by_id = request.user.id if request.user and request.user.is_authenticated else tupad.processed_by_id
+    # Similar to REAP: record who released the TUPAD and when, do not
+    # overwrite `processed_by_id` at release time.
+    try:
+        if request.user and request.user.is_authenticated:
+            tupad.released_by_id = request.user.id
+        tupad.released_at = timezone.now()
+    except Exception:
+        pass
     tupad.save()
+    # Return release metadata for client convenience
+    released_by_id = tupad.released_by.id if getattr(tupad, 'released_by', None) else None
+    released_by_first_name = tupad.released_by.first_name if getattr(tupad, 'released_by', None) else ''
+    released_by_last_name = tupad.released_by.last_name if getattr(tupad, 'released_by', None) else ''
+    released_by_name = (f"{released_by_first_name} {released_by_last_name}".strip()) if (released_by_first_name or released_by_last_name) else ''
+    released_at = tupad.released_at.strftime('%Y-%m-%d %H:%M:%S') if getattr(tupad, 'released_at', None) else ''
 
-    return JsonResponse({'success': True})
+    return JsonResponse({
+        'success': True,
+        'released_by_id': released_by_id,
+        'released_by_first_name': released_by_first_name,
+        'released_by_last_name': released_by_last_name,
+        'released_by_name': released_by_name,
+        'released_at': released_at,
+    })
 
    

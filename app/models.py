@@ -219,6 +219,8 @@ class Peso_reap(models.Model):
     next = models.BooleanField(default=False)
     actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_peso_reaps', blank=True, null=True)
     actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
+    released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='released_peso_reaps', blank=True, null=True)
+    released_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
@@ -226,7 +228,8 @@ class Peso_reap(models.Model):
             # safe access to processed_by name
             p_name = f"{self.processed_by.first_name} {self.processed_by.last_name}".strip()
             parts.append(f"processed by {p_name}")
-        return ' - '.join(parts)
+        return ' - '.join(parts) 
+
 
 class Skills_training(models.Model):
     Skills_name = models.CharField(max_length=255)
@@ -246,6 +249,8 @@ class Peso_tupad(models.Model):
     status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
     actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_peso_tupads', blank=True, null=True)
     actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
+    released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='released_peso_tupads', blank=True, null=True)   
+    released_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
