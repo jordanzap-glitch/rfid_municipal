@@ -6,6 +6,8 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
+from django.db.models import Count
+from django.db.models.functions import ExtractYear
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Bsrcenter, Bsrcenter_Burial, Peso_reap, Peso_tupad, Occupation, Academic_year, Semester, Medicines, Bsrcenter_meds
 import csv
 from django.utils.encoding import smart_str
@@ -23,9 +25,41 @@ def home(request):
     construction_count = Registration.objects.filter(occupation__occupation_name__iexact='Construction Worker').count()
     plumber_count = Registration.objects.filter(occupation__occupation_name__iexact='Plumber').count()
     unemployed_count = Registration.objects.filter(occupation__occupation_name__iexact='Unemployed').count()
-    # analytics: center = bsrcenter + bsrcenter_burial, peso = peso_reap + peso_tupad
-    center_count = Bsrcenter.objects.count() + Bsrcenter_Burial.objects.count()
-    peso_count = Peso_reap.objects.count() + Peso_tupad.objects.count()
+    # aggregated occupation counts: occupation name + registration count
+    try:
+        occ_qs = (
+            Registration.objects
+            .values('occupation__occupation_name')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        occupation_counts = []
+        for o in occ_qs:
+            name = o.get('occupation__occupation_name') or 'Unspecified'
+            occupation_counts.append({'name': name, 'count': o.get('count', 0)})
+    except Exception:
+        occupation_counts = []
+    # analytics: compute department assistance totals for Center and PESO
+    try:
+        center_count = Bsrcenter.objects.count() + Bsrcenter_Burial.objects.count()
+    except Exception:
+        center_count = 0
+    try:
+        peso_count = Peso_reap.objects.count() + Peso_tupad.objects.count()
+    except Exception:
+        peso_count = 0
+    # percentages for simple comparison (integers, sum may be 100 or off-by-1 due to rounding)
+    try:
+        total_departments = center_count + peso_count
+        if total_departments:
+            center_pct = int(round((center_count / total_departments) * 100))
+            peso_pct = 100 - center_pct
+        else:
+            center_pct = 0
+            peso_pct = 0
+    except Exception:
+        center_pct = 0
+        peso_pct = 0
     # Assistance breakdown counts
     brscenter_medicals_count = Bsrcenter.objects.count()
     bsrcenter_burials_count = Bsrcenter_Burial.objects.count()
@@ -39,8 +73,11 @@ def home(request):
         'construction_count': construction_count,
         'plumber_count': plumber_count,
         'unemployed_count': unemployed_count,
+        'occupation_counts': occupation_counts,
         'center_count': center_count,
         'peso_count': peso_count,
+        'center_pct': center_pct,
+        'peso_pct': peso_pct,
         # assistance breakdown for template
         'brscenter_medicals_count': brscenter_medicals_count,
         'bsrcenter_burials_count': bsrcenter_burials_count,
@@ -104,6 +141,12 @@ def analytics_home(request):
     except Exception:
         reap_released_pct = 0
 
+    # single parent count: registration.civil_status_id == 3
+    try:
+        single_parent_count = Registration.objects.filter(civil_status_id=3).count()
+    except Exception:
+        single_parent_count = 0
+
     context = {
         'reap_total': reap_total,
         'reap_released': reap_released,
@@ -111,6 +154,75 @@ def analytics_home(request):
         'academic_years': academic_years,
         'selected_academic_year_id': selected_academic_year_id,
     }
+
+    # Build trend data: counts of Peso_reap per Academic_year (labelled by year + semester)
+    try:
+        # Map Academic_year_id -> count across all Peso_reap (or filtered set?)
+        counts_qs = Peso_reap.objects.values('Academic_year_id').annotate(count=Count('id'))
+        counts_map = {c['Academic_year_id']: c['count'] for c in counts_qs}
+        reap_trend_labels = []
+        reap_trend_data = []
+        # Use the academic_years list (already ordered) to build labels in the same order
+        for ay in academic_years:
+            ay_id = ay.get('id')
+            label = ay.get('year') or ''
+            sem = ay.get('sem_name')
+            if sem:
+                label = f"{label} - {sem}"
+            reap_trend_labels.append(label)
+            reap_trend_data.append(counts_map.get(ay_id, 0))
+    except Exception:
+        reap_trend_labels = []
+        reap_trend_data = []
+
+    # add trend arrays to context
+    context.update({
+        'reap_trend_labels': reap_trend_labels,
+        'reap_trend_data': reap_trend_data,
+    })
+
+    # Build top-barangay counts: count unique registrations per barangay
+    try:
+        # collect registration IDs referenced by any assistance model
+        reg_ids = set()
+        reg_ids.update(list(Bsrcenter.objects.values_list('registration_id', flat=True).exclude(registration_id__isnull=True)))
+        reg_ids.update(list(Bsrcenter_Burial.objects.values_list('registration_id', flat=True).exclude(registration_id__isnull=True)))
+        reg_ids.update(list(Peso_reap.objects.values_list('registration_id', flat=True).exclude(registration_id__isnull=True)))
+        reg_ids.update(list(Peso_tupad.objects.values_list('registration_id', flat=True).exclude(registration_id__isnull=True)))
+
+        barangay_labels = []
+        barangay_data = []
+        if reg_ids:
+            # count unique registrations grouped by registration.barangay_id
+            counts = (
+                Registration.objects
+                .filter(id__in=reg_ids)
+                .values('barangay_id')
+                .annotate(count=Count('id'))
+                .order_by('-count')
+            )
+            ids = [c['barangay_id'] for c in counts if c.get('barangay_id')]
+            name_map = {b['id']: b['barangay_name'] for b in Barangay.objects.filter(id__in=ids).values('id', 'barangay_name')}
+            for c in counts[:10]:
+                bid = c.get('barangay_id')
+                if not bid:
+                    continue
+                barangay_labels.append(name_map.get(bid, 'Unknown'))
+                barangay_data.append(c.get('count', 0))
+    except Exception:
+        barangay_labels = []
+        barangay_data = []
+
+    context.update({
+        'barangay_labels': barangay_labels,
+        'barangay_data': barangay_data,
+    })
+
+    # include single_parent_count in context
+    try:
+        context.update({'single_parent_count': single_parent_count})
+    except Exception:
+        context.update({'single_parent_count': 0})
 
     # Compute TUPAD release progress metrics for analytics card
     try:
@@ -130,6 +242,31 @@ def analytics_home(request):
         'tupad_total': tupad_total,
         'tupad_released': tupad_released,
         'tupad_released_pct': tupad_released_pct,
+    })
+
+    # Build yearly trend for TUPAD based on date_issued year
+    try:
+        tupad_counts_qs = (
+            Peso_tupad.objects
+            .exclude(date_issued__isnull=True)
+            .annotate(year=ExtractYear('date_issued'))
+            .values('year')
+            .annotate(count=Count('id'))
+            .order_by('year')
+        )
+        tupad_trend_labels = []
+        tupad_trend_data = []
+        for r in tupad_counts_qs:
+            year = r.get('year')
+            tupad_trend_labels.append(str(year) if year is not None else '')
+            tupad_trend_data.append(r.get('count', 0))
+    except Exception:
+        tupad_trend_labels = []
+        tupad_trend_data = []
+
+    context.update({
+        'tupad_trend_labels': tupad_trend_labels,
+        'tupad_trend_data': tupad_trend_data,
     })
 
     return render(request, 'mun_admin/analytics_home.html', context)

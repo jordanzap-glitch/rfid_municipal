@@ -81,176 +81,6 @@
   </div>
 </section>
 
-<section class="section mt-4">
-  <div class="section-body">
-    <div class="mb-3 font-weight-bold">Occupations</div>
-    <div class="row">
-      <!-- Farmers -->
-      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
-        <div class="card card-statistic-1">
-          <div class="card-icon bg-secondary">
-            <i class="fas fa-tractor"></i>
-          </div>
-          <div class="card-wrap">
-            <div class="card-header">
-              <h4>Farmers</h4>
-            </div>
-            <div class="card-body">
-              {{ farmers_count }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Construction Workers -->
-      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
-        <div class="card card-statistic-1">
-          <div class="card-icon bg-danger">
-            <i class="fas fa-hammer"></i>
-          </div>
-          <div class="card-wrap">
-            <div class="card-header">
-              <h4>Construction Workers</h4>
-            </div>
-            <div class="card-body">
-              {{ construction_count }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Plumber -->
-      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
-        <div class="card card-statistic-1">
-          <div class="card-icon bg-info">
-            <i class="fas fa-wrench"></i>
-          </div>
-          <div class="card-wrap">
-            <div class="card-header">
-              <h4>Plumber</h4>
-            </div>
-            <div class="card-body">
-              {{ plumber_count }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Unemployed -->
-      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
-        <div class="card card-statistic-1">
-          <div class="card-icon bg-dark">
-            <i class="fas fa-user-slash"></i>
-          </div>
-          <div class="card-wrap">
-            <div class="card-header">
-              <h4>Unemployed</h4>
-            </div>
-            <div class="card-body">
-              {{ unemployed_count }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Analytics -->
-<section class="section mt-4">
-  <div class="section-body">
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h4>Analytics</h4>
-            <div class="card-header-action">
-              <div class="dropdown">
-                <a href="#" data-toggle="dropdown" class="btn btn-icon btn-primary dropdown-toggle"><i class="fas fa-ellipsis-h"></i></a>
-                <div class="dropdown-menu dropdown-menu-right">
-                  <a href="#" class="dropdown-item">Refresh</a>
-                  <a href="#" class="dropdown-item">Export</a>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="card-body">
-            <p class="text-muted">Assistance totals grouped by service category.</p>
-            <div style="height:320px;">
-              <canvas id="analyticsChart"></canvas>
-            </div>
-          </div>
-          <div class="card-footer d-flex justify-content-around">
-            <div class="text-center">
-              <div class="text-muted">Center</div>
-              <strong>{{ center_count|default:0 }}</strong>
-            </div>
-            <div class="text-center">
-              <div class="text-muted">PESO</div>
-              <strong>{{ peso_count|default:0 }}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Chart initialization uses project's local Chart scripts (loaded in includes/scripts.html) -->
-<script>
-window.addEventListener('load', function(){
-  try{
-    var canvas = document.getElementById('analyticsChart');
-    if(!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var centerCount = Number({{ center_count|default:0 }});
-    var pesoCount = Number({{ peso_count|default:0 }});
-
-    // create gradients similar to Stisla theme
-    var gradientBlue = ctx.createLinearGradient(0, 0, 0, 300);
-    gradientBlue.addColorStop(0, 'rgba(54,162,235,0.85)');
-    gradientBlue.addColorStop(1, 'rgba(54,162,235,0.15)');
-
-    var gradientPink = ctx.createLinearGradient(0, 0, 0, 300);
-    gradientPink.addColorStop(0, 'rgba(255,99,132,0.85)');
-    gradientPink.addColorStop(1, 'rgba(255,99,132,0.15)');
-
-    var chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Center', 'PESO'],
-        datasets: [{
-          label: 'Assistance Count',
-          data: [centerCount, pesoCount],
-          backgroundColor: [gradientBlue, gradientPink],
-          borderColor: ['rgba(54,162,235,1)','rgba(255,99,132,1)'],
-          borderWidth: 1,
-          maxBarThickness: 60,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { mode: 'index', intersect: false }
-        },
-        interaction: { mode: 'nearest', axis: 'x', intersect: false },
-        scales: {
-          x: { grid: { display: false } },
-          y: {
-            beginAtZero: true,
-            ticks: { precision:0 },
-            grid: { color: 'rgba(200,200,200,0.08)' }
-          }
-        }
-      }
-    });
-  }catch(e){ console.error('Chart error', e); }
-});
-</script>
- 
 <!-- Assistance breakdown cards -->
 <section class="section mt-4">
   <div class="section-body">
@@ -277,6 +107,7 @@ window.addEventListener('load', function(){
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_medicals' %}" class="dropdown-item">Export CSV</a>
                   <a href="{% url 'municipal_export_medicals' %}?status=2" class="dropdown-item">Export Approved</a>
+                  <a href="{% url 'municipal_export_medicals' %}?status=3" class="dropdown-item">Export Rejected</a>
                 </div>
               </div>
             </div>
@@ -303,6 +134,7 @@ window.addEventListener('load', function(){
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_burials' %}" class="dropdown-item">Export CSV</a>
                   <a href="{% url 'municipal_export_burials' %}?status=2" class="dropdown-item">Export Approved</a>
+                  <a href="{% url 'municipal_export_burials' %}?status=3" class="dropdown-item">Export Rejected</a>
                 </div>
               </div>
             </div>
@@ -329,6 +161,7 @@ window.addEventListener('load', function(){
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_reap' %}" class="dropdown-item">Export CSV</a>
                   <a href="{% url 'municipal_export_reap' %}?status=2" class="dropdown-item">Export Approved</a>
+                  <a href="{% url 'municipal_export_reap' %}?status=3" class="dropdown-item">Export Rejected</a>
                 </div>
               </div>
             </div>
@@ -355,6 +188,7 @@ window.addEventListener('load', function(){
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="{% url 'municipal_export_tupad' %}" class="dropdown-item">Export CSV</a>
                   <a href="{% url 'municipal_export_tupad' %}?status=2" class="dropdown-item">Export Approved</a>
+                  <a href="{% url 'municipal_export_tupad' %}?status=3" class="dropdown-item">Export Rejected</a>
                 </div>
               </div>
             </div>
@@ -367,5 +201,101 @@ window.addEventListener('load', function(){
     </div>
   </div>
 </section>
+<br>
+<br>
+
+
+<!-- Occupation + Department Pie Charts (side-by-side) -->
+<section class="section mt-3">
+  <div class="section-body">
+    <div class="row">
+      <div class="col-lg-8 col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h4>Occupation Distribution</h4>
+          </div>
+          <div class="card-body">
+            <p class="text-muted">Counts grouped by occupation (from registrations).</p>
+            <div id="occupationChart" style="height:320px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4 col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h4>Assistance by Department</h4>
+          </div>
+          <div class="card-body text-center">
+            <div id="deptPieChart" style="max-width:380px; margin: 0 auto;"></div>
+            <div class="mt-3">
+              <div><strong>Center:</strong> {{ center_count|default:0 }} ({{ center_pct|default:0 }}%)</div>
+              <div><strong>PESO:</strong> {{ peso_count|default:0 }} ({{ peso_pct|default:0 }}%)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+window.addEventListener('load', function(){
+  try{
+    // Build data array from server-provided `occupation_counts`
+    var occData = [
+      {% for oc in occupation_counts %}
+        { x: "{{ oc.name|escapejs }}", y: {{ oc.count }} }{% if not forloop.last %},{% endif %}
+      {% empty %}
+        // no occupation data
+      {% endfor %}
+    ];
+
+    // Occupation bar chart options
+    var occOptions = {
+      series: [{ name: 'Count', data: occData }],
+      chart: { type: 'bar', height: 320 },
+      plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
+      dataLabels: { enabled: false },
+      xaxis: { type: 'category' },
+      tooltip: { y: { formatter: function(val){ return val; } } }
+    };
+
+    // Department pie chart data from server
+    var centerCount = Number({{ center_count|default:0 }});
+    var pesoCount = Number({{ peso_count|default:0 }});
+    var pieOptions = {
+      series: [centerCount, pesoCount],
+      chart: { width: '100%', type: 'pie' },
+      labels: ['Center', 'PESO'],
+      responsive: [{
+        breakpoint: 480,
+        options: { chart: { width: 200 }, legend: { position: 'bottom' } }
+      }]
+    };
+
+    if(typeof ApexCharts === 'undefined'){
+      console.warn('ApexCharts is not loaded — department pie and occupation charts will not render');
+      return;
+    }
+
+    var occEl = document.querySelector('#occupationChart');
+    if(occEl){
+      var occChart = new ApexCharts(occEl, occOptions);
+      occChart.render();
+    }
+
+    var pieEl = document.querySelector('#deptPieChart');
+    if(pieEl){
+      var pieChart = new ApexCharts(pieEl, pieOptions);
+      pieChart.render();
+    }
+
+  }catch(e){ console.error('Chart error', e); }
+});
+</script>
+
+
+<!-- Analytics card removed per request -->
 {% endblock %}
 

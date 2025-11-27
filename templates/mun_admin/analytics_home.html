@@ -8,6 +8,35 @@
     </div>
 
     <div class="section-body">
+        <!-- Top Barangay assistance breakdown (horizontal bar chart) + Single Parent card -->
+        <div class="row mb-3">
+            <div class="col-lg-9 col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Top Barangays by Assistance Count</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="barangayBarChart" style="height:360px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="card card-statistic-1">
+                    <div class="card-icon bg-warning">
+                        <i class="fas fa-user-friends"></i>
+                    </div>
+                    <div class="card-wrap">
+                        <div class="card-header">
+                            <h4>Single Parent</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="h4 mb-0">{{ single_parent_count|default:0 }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-md-6">
                 <div class="card">
@@ -33,6 +62,10 @@
                                 <span class="sr-only">{{ reap_released_pct|default:0 }}% Complete</span>
                             </div>
                         </div>
+                        <!-- REAP Trend Line Chart -->
+                        <div class="mt-3">
+                            <div id="reapTrendChart" style="height:300px;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -51,11 +84,125 @@
                                 <span class="sr-only">{{ tupad_released_pct|default:0 }}% Complete</span>
                             </div>
                         </div>
+                        <!-- TUPAD Trend Line Chart -->
+                        <div class="mt-3">
+                            <div id="tupadTrendChart" style="height:300px;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<script>
+window.addEventListener('load', function(){
+    try{
+        if(typeof ApexCharts === 'undefined'){
+            console.warn('ApexCharts not loaded — REAP trend chart will not render');
+            return;
+        }
+
+        var labels = [
+            {% for l in reap_trend_labels %}
+                "{{ l|escapejs }}"{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+
+        var data = [
+            {% for v in reap_trend_data %}
+                {{ v }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+
+        var options = {
+          series: [{
+            name: "REAP Count",
+            data: data
+          }],
+          chart: {
+            height: 300,
+            type: 'line',
+            zoom: { enabled: false }
+          },
+          dataLabels: { enabled: false },
+          stroke: { curve: 'straight' },
+          title: { text: 'REAP Submissions by Academic Year', align: 'left' },
+          grid: { row: { colors: ['#f3f3f3', 'transparent'], opacity: 0.5 } },
+          xaxis: { categories: labels }
+        };
+
+        var el = document.querySelector('#reapTrendChart');
+        if(el){
+            var chart = new ApexCharts(el, options);
+            chart.render();
+        }
+
+        // Barangay horizontal bar chart
+        var barangayLabels = [
+            {% for lb in barangay_labels %}
+                "{{ lb|escapejs }}"{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+
+        var barangayData = [
+            {% for v in barangay_data %}
+                {{ v }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+
+        if(barangayLabels.length && barangayData.length){
+            var barangayOptions = {
+              series: [{ data: barangayData }],
+              chart: { type: 'bar', height: 350 },
+              plotOptions: { bar: { borderRadius: 4, borderRadiusApplication: 'end', horizontal: true } },
+              dataLabels: { enabled: false },
+              xaxis: { categories: barangayLabels }
+            };
+            var barEl = document.querySelector('#barangayBarChart');
+            if(barEl){
+                var barChart = new ApexCharts(barEl, barangayOptions);
+                barChart.render();
+            }
+        }
+
+        // TUPAD trend chart
+        var tupadLabels = [
+            {% for l in tupad_trend_labels %}
+                "{{ l|escapejs }}"{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+        var tupadData = [
+            {% for v in tupad_trend_data %}
+                {{ v }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+
+        if(tupadLabels.length && tupadData.length){
+            var tupadOptions = {
+              series: [{ name: 'TUPAD Count', data: tupadData }],
+              chart: { height: 300, type: 'line', zoom: { enabled: false } },
+              dataLabels: { enabled: false },
+              stroke: { curve: 'straight' },
+              title: { text: 'TUPAD Issued by Year', align: 'left' },
+              grid: { row: { colors: ['#f3f3f3', 'transparent'], opacity: 0.5 } },
+              xaxis: { categories: tupadLabels }
+            };
+            var tupEl = document.querySelector('#tupadTrendChart');
+            if(tupEl){
+                var tupChart = new ApexCharts(tupEl, tupadOptions);
+                tupChart.render();
+            }
+        }
+
+    }catch(e){ console.error('REAP trend chart error', e); }
+});
+</script>
 
 {% endblock %}
