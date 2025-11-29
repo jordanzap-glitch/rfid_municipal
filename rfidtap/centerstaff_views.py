@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import date, datetime as _dt
 from decimal import Decimal, InvalidOperation
 
+@login_required(login_url='/')
 def home(request):
     return render(request,'center_staff/home.html')
 
@@ -319,6 +320,7 @@ def BURIAL_FORM(request):
 
 @require_GET
 @csrf_exempt
+@login_required(login_url='/')
 def GET_REGISTRATION(request, rfid):
     try:
         reg = Registration.objects.select_related('province', 'municipality', 'barangay').get(rfid=rfid)
@@ -369,6 +371,7 @@ def GET_REGISTRATION(request, rfid):
 
 @require_GET
 @csrf_exempt
+@login_required(login_url='/')
 def GET_REGISTRATION_BURIALS(request, rfid):
     """Return registration info plus latest burial assistance (if any).
 

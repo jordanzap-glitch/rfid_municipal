@@ -28,7 +28,7 @@
           <div class="col-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3 col-lg-6 offset-lg-3 col-xl-4 offset-xl-4">
 
             <div class="login-brand">
-              <img src="{% static 'img/logo-santa-rita.jpg' %}" alt="logo" width="100" class="shadow-light rounded-circle">
+              <img src="{% static 'img/bayung-santa-rita.png' %}" alt="logo" width="100" class="shadow-light rounded-circle">
             </div>
 
             <div class="card card-primary">
@@ -38,12 +38,33 @@
 
                 <!-- SHOW DJANGO MESSAGES -->
                 {% if messages %}
-                  <div class="mb-3">
-                    {% for message in messages %}
-                      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                    <div class="container mt-3">
+                        {% for message in messages %}
+                        <div class="visible-message {% if message.tags == 'success' %}success{% elif message.tags == 'error' or message.tags == 'danger' %}error{% endif %}">
+                            {{ message }}
+                          <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+                        </div>
+                      {% endfor %}
+                    </div>
+                    <script>
+                      // Auto-hide visible messages after 3 seconds with a short fade
+                      (function(){
+                        document.addEventListener('DOMContentLoaded', function(){
+                          var msgs = document.querySelectorAll('.visible-message');
+                          if (!msgs || msgs.length === 0) return;
+                          setTimeout(function(){
+                            msgs.forEach(function(m){
+                              try {
+                                m.style.transition = 'opacity 0.4s ease';
+                                m.style.opacity = '0';
+                                setTimeout(function(){ m.style.display = 'none'; }, 450);
+                              } catch(e) { try { m.style.display = 'none'; } catch(_){} }
+                            });
+                          }, 3000);
+                        });
+                      })();
+                    </script>
+                  {% endif %}
 
                 <form method="POST" action="{% url 'doLogin' %}" class="needs-validation" novalidate="">
                   {% csrf_token %}
@@ -89,7 +110,7 @@
             </div>
 
             <div class="simple-footer">
-              Copyright &copy; Jordan Zapanta
+              Copyright &copy; 2025 <div class="bullet"></div> Design By <a href=""><img src="{% static 'img/gawan-ke.png' %}" alt="Logo" style="height:64px; width:auto; vertical-align:middle;"></a>
             </div>
           </div>
         </div>

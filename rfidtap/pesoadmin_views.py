@@ -13,6 +13,7 @@ from datetime import date, datetime as _dt
 from decimal import Decimal, InvalidOperation
 
 
+@login_required(login_url='/')
 def home(request):
     # Allow filtering REAP metrics by Academic Year (via GET ?academic_year=<id>)
     academic_year_param = request.GET.get('academic_year') or None
@@ -103,6 +104,7 @@ def home(request):
     return render(request,'peso_admin/home.html', context)
 
 
+@login_required(login_url='/')
 def APPROVAL_TABLE_REAP(request):
     """
     Show approval table for `Peso_reap` rows.
@@ -202,6 +204,7 @@ def APPROVAL_TABLE_REAP(request):
 
 
 @require_GET
+@login_required(login_url='/')
 def GET_PESO_REAP_INFO(request):
     """AJAX GET endpoint: return Peso_reap rows for a registration_id."""
     registration_id = request.GET.get('registration_id') or request.GET.get('id')
@@ -279,6 +282,7 @@ def GET_PESO_REAP_INFO(request):
     return JsonResponse(data)
 
 
+@login_required(login_url='/')
 def APPROVAL_TABLE_TUPAD(request):
     """
     Show approval table for `Peso_tupad` rows.
@@ -359,6 +363,7 @@ def APPROVAL_TABLE_TUPAD(request):
 
 
 @require_GET
+@login_required(login_url='/')
 def GET_PESO_TUPAD_INFO(request):
     """AJAX GET endpoint: return Peso_tupad rows for a registration_id."""
     registration_id = request.GET.get('registration_id') or request.GET.get('id')

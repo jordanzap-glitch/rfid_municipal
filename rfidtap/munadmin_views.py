@@ -13,6 +13,7 @@ import csv
 from django.utils.encoding import smart_str
 
 
+@login_required(login_url='/')
 def home(request):
     # show total registrations as total population
     registration_count = Registration.objects.count()
@@ -86,6 +87,7 @@ def home(request):
     })
     return render(request, 'mun_admin/home.html', context)
 
+@login_required(login_url='/')
 def analytics_home(request):
     # Compute REAP release progress metrics for analytics card
     # Support optional filtering by Academic Year via GET param `academic_year`
@@ -272,7 +274,7 @@ def analytics_home(request):
     return render(request, 'mun_admin/analytics_home.html', context)
 
 
-@login_required
+@login_required(login_url='/')
 def MEDICAL_TABLE(request):
     """Render the medicals table for municipal admin.
 
@@ -355,7 +357,7 @@ def MEDICAL_TABLE(request):
         })
 
     return render(request, 'mun_admin/medical_table.html', {'bsrcenter_data': data})
-@login_required
+@login_required(login_url='/')
 def BURIAL_TABLE(request):
     """Render the burials table for municipal admin (read-only).
 
@@ -405,7 +407,7 @@ def BURIAL_TABLE(request):
         })
 
     return render(request, 'mun_admin/burial_table.html', {'bsrcenter_data': data})
-@login_required
+@login_required(login_url='/')
 def REAP_TABLE(request):
     """Render Peso_reap rows for municipal admin.
 
@@ -486,7 +488,7 @@ def REAP_TABLE(request):
         })
 
     return render(request, 'mun_admin/reap_table.html', {'bsrcenter_data': data})
-@login_required
+@login_required(login_url='/')
 def TUPAD_TABLE(request):
     """Render Peso_tupad rows for municipal admin (read-only).
 
@@ -539,7 +541,7 @@ def TUPAD_TABLE(request):
 
     return render(request, 'mun_admin/tupad_table.html', {'bsrcenter_data': data})
 @require_GET
-@login_required
+@login_required(login_url='/')
 def EXPORT_MEDICALS(request):
     """Export Bsrcenter (Medicals) as CSV"""
     # prefetch related medicines through Bsrcenter_meds to avoid N+1 queries
@@ -596,7 +598,7 @@ def EXPORT_MEDICALS(request):
 
 
 @require_GET
-@login_required
+@login_required(login_url='/')
 def EXPORT_BURIALS(request):
     """Export Bsrcenter_Burial as CSV"""
     qs = Bsrcenter_Burial.objects.select_related('registration', 'processed_by', 'actioned_by').all()
@@ -642,7 +644,7 @@ def EXPORT_BURIALS(request):
 
 
 @require_GET
-@login_required
+@login_required(login_url='/')
 def EXPORT_REAPS(request):
     """Export Peso_reap as CSV"""
     # include Academic_year and its Semester to export human-readable year and semester
@@ -698,7 +700,7 @@ def EXPORT_REAPS(request):
 
 
 @require_GET
-@login_required
+@login_required(login_url='/')
 def EXPORT_TUPADS(request):
     """Export Peso_tupad as CSV"""
     qs = Peso_tupad.objects.select_related('registration', 'processed_by', 'skills_training', 'actioned_by').all()

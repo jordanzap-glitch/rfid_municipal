@@ -10,6 +10,7 @@ from app.models import CustomUser, Registration, RfidAuth, Province, Municipalit
 from django.utils import timezone
 
 
+@login_required(login_url='/')
 def home(request):
     """
     Dashboard for Center Admin showing Bsrcenter counts:
@@ -43,6 +44,7 @@ def home(request):
     }
     return render(request, 'center_admin/home.html', context)
 
+@login_required(login_url='/')
 def APPROVAL_TABLE_MEDS(request):
     """
     Build approval table using Bsrcenter and related Bsrcenter_meds and Status.
@@ -163,6 +165,7 @@ def APPROVAL_TABLE_MEDS(request):
 
 # AJAX endpoint to get Bsrcenter info by id for modal
 @require_GET
+@login_required(login_url='/')
 def GET_BSR_CENTER_INFO_MEDS(request):
     registration_id = request.GET.get('registration_id') or request.GET.get('id')
     if not registration_id:
@@ -269,6 +272,7 @@ def GET_BSR_CENTER_INFO_MEDS(request):
     return JsonResponse(data)
 
 
+@login_required(login_url='/')
 def APPROVAL_TABLE_BURIALS(request):
     """
     Show approval table for burials using Bsrcenter_Burial rows.
@@ -346,6 +350,7 @@ def APPROVAL_TABLE_BURIALS(request):
 
 
 @require_GET
+@login_required(login_url='/')
 def GET_BSR_CENTER_INFO_BURIALS(request):
     """
     AJAX GET endpoint: return all Bsrcenter_Burial rows for a registration_id.

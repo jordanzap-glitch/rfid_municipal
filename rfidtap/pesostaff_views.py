@@ -15,9 +15,11 @@ from decimal import Decimal, InvalidOperation
 import json
 
 
+@login_required(login_url='/')
 def home(request):
     return render(request, 'peso_staff/home.html')
 
+@login_required(login_url='/')
 def REAP_FORM(request):
     """Handle REAP form for PESO staff.
 
@@ -186,6 +188,7 @@ def REAP_FORM(request):
         recent_reap = request.session.pop('recent_reap', None)
     return render(request,'peso_staff/reap_form.html', {'recent_reap': recent_reap, 'active_ay': active_ay, 'reap_types': reap_types})
 
+@login_required(login_url='/')
 def TUPAD_FORM(request):
     skills = Skills_training.objects.all()
     """Handle TUPAD form for PESO staff.
@@ -328,6 +331,7 @@ def TUPAD_FORM(request):
 
 @require_GET
 @csrf_exempt
+@login_required(login_url='/')
 def GET_REGISTRATION_REAP(request, rfid):
     try:
         reg = Registration.objects.select_related('province', 'municipality', 'barangay').get(rfid=rfid)
@@ -404,11 +408,12 @@ def GET_REGISTRATION_REAP(request, rfid):
 
 
 
+@login_required(login_url='/')
 def REAP_RELEASE(request):
     return render(request, 'peso_staff/reap_release.html')
 
 @require_POST
-@login_required
+@login_required(login_url='/')
 def RELEASE_REAP(request):
     """Handle REAP release POST: expects JSON {tracking: <tracking_number>} or {id: <reap_id>}.
 
@@ -491,12 +496,14 @@ def RELEASE_REAP(request):
     })
 
 
+@login_required(login_url='/')
 def TUPAD_RELEASE(request):
     return render(request, 'peso_staff/tupad_release.html')
 
 
 @require_GET
 @csrf_exempt
+@login_required(login_url='/')
 def GET_REGISTRATION_TUPAD(request, rfid):
     try:
         reg = Registration.objects.select_related('province', 'municipality', 'barangay').get(rfid=rfid)
@@ -548,7 +555,7 @@ def GET_REGISTRATION_TUPAD(request, rfid):
 
 
 @require_POST
-@login_required
+@login_required(login_url='/')
 def RELEASE_TUPAD(request):
     """Handle TUPAD release POST: expects JSON {tracking: <tracking_number>} or {id: <tupad_id>}.
 
