@@ -8,6 +8,7 @@
     </div>
 
     <div class="section-body">
+        
         <!-- Top Barangay assistance breakdown (horizontal bar chart) + Single Parent card -->
         <div class="row mb-3">
             <div class="col-lg-9 col-md-12">
@@ -36,7 +37,8 @@
                 </div>
             </div>
         </div>
-
+        
+        <!-- Insert REAP and TUPAD Release Progress row under Top Barangays -->
         <div class="row">
             <div class="col-md-6">
                 <div class="card">
@@ -62,10 +64,7 @@
                                 <span class="sr-only">{{ reap_released_pct|default:0 }}% Complete</span>
                             </div>
                         </div>
-                        <!-- REAP Trend Line Chart -->
-                        <div class="mt-3">
-                            <div id="reapTrendChart" style="height:300px;"></div>
-                        </div>
+                        <!-- REAP Trend Line Chart will be shown in separate card below -->
                     </div>
                 </div>
             </div>
@@ -84,14 +83,51 @@
                                 <span class="sr-only">{{ tupad_released_pct|default:0 }}% Complete</span>
                             </div>
                         </div>
-                        <!-- TUPAD Trend Line Chart -->
-                        <div class="mt-3">
-                            <div id="tupadTrendChart" style="height:300px;"></div>
-                        </div>
+                        <!-- TUPAD Trend Line Chart will be shown in separate card below -->
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Separate row for REAP and TUPAD trend charts -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>REAP Submissions Trend</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="reapTrendChart" style="height:300px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>TUPAD Issued Trend</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="tupadTrendChart" style="height:300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REAP Active / Inactive chart - separate card -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>REAP Active vs Inactive by Academic Year</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="reapStatusChart" style="height:360px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
     </div>
 </section>
 
@@ -169,6 +205,64 @@ window.addEventListener('load', function(){
                 barChart.render();
             }
         }
+
+                // REAP status multi-series bar chart (Active / Inactive / Released)
+                var reapStatusActive = [
+                    {% for v in reap_status_active %}
+                        {{ v }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                    {% endfor %}
+                ];
+                var reapStatusInactive = [
+                    {% for v in reap_status_inactive %}
+                        {{ v }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                    {% endfor %}
+                ];
+                // Labels specifically for the REAP Active/Inactive chart (excludes is_active==1)
+                var reapStatusLabels = [
+                    {% for l in reap_status_labels %}
+                    "{{ l|escapejs }}"{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                    {% endfor %}
+                ];
+
+                // render only when we have labels and at least one series with data
+                // Render using `reapStatusLabels` so labels align with the filtered series
+                if(reapStatusLabels.length && (reapStatusActive.length || reapStatusInactive.length)){
+                        var reapStatusOptions = {
+                            series: [{
+                                name: 'Active REAP',
+                                data: reapStatusActive
+                            }, {
+                                name: 'Inactive REAP',
+                                data: reapStatusInactive
+                            }],
+                            chart: {
+                                type: 'bar',
+                                height: 350
+                            },
+                            plotOptions: {
+                                bar: {
+                                    horizontal: false,
+                                    columnWidth: '55%',
+                                    borderRadius: 5,
+                                    borderRadiusApplication: 'end'
+                                }
+                            },
+                            dataLabels: { enabled: false },
+                            stroke: { show: true, width: 2, colors: ['transparent'] },
+                            xaxis: { categories: reapStatusLabels },
+                            yaxis: { title: { text: 'Count' } },
+                            fill: { opacity: 1 },
+                            tooltip: { y: { formatter: function (val) { return val; } } }
+                        };
+                        var rsEl = document.querySelector('#reapStatusChart');
+                        if(rsEl){
+                                var rsChart = new ApexCharts(rsEl, reapStatusOptions);
+                                rsChart.render();
+                        }
+                }
 
         // TUPAD trend chart
         var tupadLabels = [

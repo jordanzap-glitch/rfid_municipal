@@ -118,7 +118,8 @@ def analytics_home(request):
             academic_years.append({
                 'id': getattr(ay, 'id', None),
                 'year': year_label,
-                'sem_name': getattr(getattr(ay, 'semester', None), 'sem_name', '')
+                'sem_name': getattr(getattr(ay, 'semester', None), 'sem_name', ''),
+                'is_active': getattr(ay, 'is_active', 0),
             })
     except Exception:
         academic_years = []
@@ -158,13 +159,45 @@ def analytics_home(request):
     }
 
     # Build trend data: counts of Peso_reap per Academic_year (labelled by year + semester)
+    reap_academic_years = []
     try:
-        # Map Academic_year_id -> count across all Peso_reap (or filtered set?)
+        # Determine academic years referenced by the (possibly filtered) Peso_reap queryset
+        reap_year_ids = list(reap_qs.exclude(Academic_year_id__isnull=True).values_list('Academic_year_id', flat=True).distinct())
+        reap_academic_years = []
+        import datetime
+        if reap_year_ids:
+            for ay in Academic_year.objects.select_related('semester').filter(id__in=reap_year_ids).exclude(is_active=1).order_by('-year'):
+                raw_year = getattr(ay, 'year', None)
+                year_label = ''
+                try:
+                    if isinstance(raw_year, (datetime.date, datetime.datetime)):
+                        year_label = str(raw_year.year)
+                    elif isinstance(raw_year, int):
+                        year_label = str(raw_year)
+                    elif isinstance(raw_year, str):
+                        if len(raw_year) >= 4 and raw_year[:4].isdigit():
+                            year_label = raw_year[:4]
+                        else:
+                            year_label = raw_year
+                    else:
+                        year_label = str(raw_year) if raw_year is not None else ''
+                except Exception:
+                    year_label = str(raw_year) if raw_year is not None else ''
+
+                reap_academic_years.append({
+                    'id': getattr(ay, 'id', None),
+                    'year': year_label,
+                    'sem_name': getattr(getattr(ay, 'semester', None), 'sem_name', '')
+                })
+
+        # Count based directly on the Peso_reap table grouped by Academic_year_id
+        # This ensures the chart reflects counts keyed by peso_reap.Academic_year_id
         counts_qs = Peso_reap.objects.values('Academic_year_id').annotate(count=Count('id'))
         counts_map = {c['Academic_year_id']: c['count'] for c in counts_qs}
+
         reap_trend_labels = []
         reap_trend_data = []
-        # Use the academic_years list (already ordered) to build labels in the same order
+        # Build labels using the full academic_years list so all academic years are shown
         for ay in academic_years:
             ay_id = ay.get('id')
             label = ay.get('year') or ''
@@ -177,10 +210,43 @@ def analytics_home(request):
         reap_trend_labels = []
         reap_trend_data = []
 
-    # add trend arrays to context
+    # Build REAP status series (Active / Inactive) per Academic_year
+    try:
+        # Build Active / Inactive maps from the Peso_reap table (grouped by Academic_year_id)
+        active_qs = Peso_reap.objects.filter(next=1).values('Academic_year_id').annotate(count=Count('id'))
+        inactive_qs = Peso_reap.objects.exclude(next=1).values('Academic_year_id').annotate(count=Count('id'))
+
+        active_map = {c['Academic_year_id']: c['count'] for c in active_qs}
+        inactive_map = {c['Academic_year_id']: c['count'] for c in inactive_qs}
+
+        reap_status_active = []
+        reap_status_inactive = []
+        # Exclude academic years flagged as `is_active==1` from the Active/Inactive series
+        filtered_academic_years = [ay for ay in academic_years if not ay.get('is_active')]
+        for ay in filtered_academic_years:
+            ay_id = ay.get('id')
+            reap_status_active.append(active_map.get(ay_id, 0))
+            reap_status_inactive.append(inactive_map.get(ay_id, 0))
+        # Build labels for the REAP status chart aligned with the filtered academic years
+        reap_status_labels = []
+        for ay in filtered_academic_years:
+            label = ay.get('year') or ''
+            sem = ay.get('sem_name')
+            if sem:
+                label = f"{label} - {sem}"
+            reap_status_labels.append(label)
+    except Exception:
+        reap_status_active = []
+        reap_status_inactive = []
+        reap_status_labels = []
+
+    # add trend arrays and REAP status series to context
     context.update({
         'reap_trend_labels': reap_trend_labels,
         'reap_trend_data': reap_trend_data,
+        'reap_status_active': reap_status_active,
+        'reap_status_inactive': reap_status_inactive,
+        'reap_status_labels': reap_status_labels,
     })
 
     # Build top-barangay counts: count unique registrations per barangay
