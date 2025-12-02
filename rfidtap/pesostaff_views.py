@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import date, datetime as _dt
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
-import json
+import json, uuid, logging
 
 
 @login_required(login_url='/')
@@ -111,52 +111,34 @@ def REAP_FORM(request):
 
         # Create the Peso_reap record
         reap = None
+        MAX_ATTEMPTS = 5
         try:
-            with transaction.atomic():
-                # generate a unique tracking number similar to MED_FORM
-                import uuid
-
-                def _gen_tracking():
-                    return f"PESO-R-{uuid.uuid4().hex[:10].upper()}"
-
-                tracking = _gen_tracking()
-
-                # create record (date fields removed). Instead of looping, try create and retry once on IntegrityError.
+            for attempt in range(MAX_ATTEMPTS):
                 try:
-                    reap = Peso_reap.objects.create(
-                        registration=registration,
-                        tracking_number=tracking,
-                        biodata=biodata,
-                        certificate_of_reg=cert_registration,
-                        certificate_of_grades=cert_grades,
-                        barangay_indigency=barangay_indigency,
-                        barangay_recidency=barangay_recidency,
-                        official_receipt=official_receipt,
-                        processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
-                        # date_claimed/date_claim_expiry intentionally omitted
-                        # attach the active academic year if available (use server-side active_ay for safety)
-                        Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
-                        reap_type_id=(reap_type_id or None),
-                    )
-                except IntegrityError:
-                    # rare collision on tracking_number; try once with a fresh tracking value
-                    tracking = _gen_tracking()
-                    reap = Peso_reap.objects.create(
-                        registration=registration,
-                        tracking_number=tracking,
-                        biodata=biodata,
-                        certificate_of_reg=cert_registration,
-                        certificate_of_grades=cert_grades,
-                        barangay_indigency=barangay_indigency,
-                        barangay_recidency=barangay_recidency,
-                        official_receipt=official_receipt,
-                        processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
-                        Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
-                        reap_type_id=(reap_type_id or None),
-                    )
+                    with transaction.atomic():
+                        def _gen_tracking():
+                            return f"PESO-R-{uuid.uuid4().hex[:10].upper()}"
 
-                # Previously we marked previous assistance records with `next=True` here.
-                # This behavior was removed: do not update the `next` flag when creating a new REAP.
+                        tracking = _gen_tracking()
+                        reap = Peso_reap.objects.create(
+                            registration=registration,
+                            tracking_number=tracking,
+                            biodata=biodata,
+                            certificate_of_reg=cert_registration,
+                            certificate_of_grades=cert_grades,
+                            barangay_indigency=barangay_indigency,
+                            barangay_recidency=barangay_recidency,
+                            official_receipt=official_receipt,
+                            processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
+                            Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
+                            reap_type_id=(reap_type_id or None),
+                        )
+                    break  # success
+                except IntegrityError:
+                    # likely tracking collision — retry
+                    reap = None
+                    if attempt == MAX_ATTEMPTS - 1:
+                        raise
         except IntegrityError:
             messages.error(request, 'Database error while saving REAP.')
 
@@ -277,28 +259,29 @@ def TUPAD_FORM(request):
 
         # Create Peso_tupad record
         tupad = None
+        MAX_ATTEMPTS = 5
         try:
-            with transaction.atomic():
-                import uuid
+            for attempt in range(MAX_ATTEMPTS):
+                try:
+                    with transaction.atomic():
+                        def _gen_tracking():
+                            return f"PESO-T-{uuid.uuid4().hex[:10].upper()}"
 
-                def _gen_tracking():
-                    return f"PESO-T-{uuid.uuid4().hex[:10].upper()}"
-
-                tracking = _gen_tracking()
-                while Peso_tupad.objects.filter(tracking_number=tracking).exists():
-                    tracking = _gen_tracking()
-
-                tupad = Peso_tupad.objects.create(
-                    registration=registration,
-                    tracking_number=tracking,
-                    # model fields for TUPAD are `date_issued` / `date_issued_expiry`.
-                    date_issued=date_issued_obj if date_issued_obj else None,
-                    date_issued_expiry=date_issued_expiry_obj if date_issued_expiry_obj else None,
-                    name_of_beneficiary=name_of_beneficiary,
-                    # insert FK by id when available to avoid extra object assignment
-                    skills_training_id=skill_id if skill_id else None,
-                    processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
-                )
+                        tracking = _gen_tracking()
+                        tupad = Peso_tupad.objects.create(
+                            registration=registration,
+                            tracking_number=tracking,
+                            date_issued=date_issued_obj if date_issued_obj else None,
+                            date_issued_expiry=date_issued_expiry_obj if date_issued_expiry_obj else None,
+                            name_of_beneficiary=name_of_beneficiary,
+                            skills_training_id=skill_id if skill_id else None,
+                            processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
+                        )
+                    break
+                except IntegrityError:
+                    tupad = None
+                    if attempt == MAX_ATTEMPTS - 1:
+                        raise
         except IntegrityError:
             messages.error(request, 'Database error while saving TUPAD.')
 
@@ -450,6 +433,20 @@ def RELEASE_REAP(request):
 
     if getattr(reap, 'is_released', False):
         return JsonResponse({'error': 'already_released'}, status=400)
+    # Do not allow releasing when the record is Pending (1) or Rejected (3)
+    try:
+        status_id = getattr(reap, 'status_id', None)
+    except Exception:
+        status_id = None
+    if status_id in (1, 3):
+        # Return a clearer message for clients indicating the record
+        # is not releasable because it's either Pending (1) or Rejected (3).
+        status_label = 'Pending' if status_id == 1 else ('Rejected' if status_id == 3 else 'Unknown')
+        return JsonResponse({
+            'error': 'cannot_release_status',
+            'message': f'Record cannot be released because status is {status_label}.',
+            'status_id': status_id,
+        }, status=400)
     # Mark this REAP as released and update previous REAP records for the
     # same registration so they are flagged with `next = True`.
     try:
@@ -474,7 +471,7 @@ def RELEASE_REAP(request):
             except Exception:
                 # Don't fail the release if updating the `next` flag fails;
                 # log to console for debugging.
-                import logging
+               
                 logging.exception('Failed to update previous Peso_reap.next flags')
     except Exception:
         return JsonResponse({'error': 'db_error'}, status=500)
@@ -585,6 +582,19 @@ def RELEASE_TUPAD(request):
     if getattr(tupad, 'is_released', False):
         return JsonResponse({'error': 'already_released'}, status=400)
 
+    # Do not allow releasing when the record is Pending (1) or Rejected (3)
+    try:
+        status_id = getattr(tupad, 'status_id', None)
+    except Exception:
+        status_id = None
+    if status_id in (1, 3):
+        status_label = 'Pending' if status_id == 1 else ('Rejected' if status_id == 3 else 'Unknown')
+        return JsonResponse({
+            'error': 'cannot_release_status',
+            'message': f'Record cannot be released because status is {status_label}.',
+            'status_id': status_id,
+        }, status=400)
+
     tupad.is_released = True
     # Similar to REAP: record who released the TUPAD and when, do not
     # overwrite `processed_by_id` at release time.
@@ -611,4 +621,3 @@ def RELEASE_TUPAD(request):
         'released_at': released_at,
     })
 
-   

@@ -138,6 +138,8 @@
           releaseMessageEl.classList.remove('hidden','success','error');
           releaseMessageEl.classList.add(type === 'error' ? 'error' : 'success');
           releaseMessageEl.style.display = '';
+          // close any open confirm modal to keep UI consistent
+          try{ $('#confirmReleaseModal').modal('hide'); }catch(_){ }
           if(timeout && timeout > 0){
             setTimeout(()=>{ try{ releaseMessageEl.classList.add('hidden'); }catch(_){ releaseMessageEl.style.display='none'; } }, timeout);
           }
@@ -164,7 +166,7 @@
           clearReleaseMessage();
           try{
             const res = await fetch(`/get/registration_tupad/${encodeURIComponent(rfid)}/`);
-            if(!res.ok){ alert('Registration not found'); return false; }
+            if(!res.ok){ showReleaseMessage('Registration not found', 'error'); return false; }
             const data = await res.json();
             profilePic.src = data.profile_pic_url || '';
             nameEl.textContent = `${data.first_name || ''} ${data.last_name || ''}`;
@@ -182,7 +184,7 @@
 
             if(releaseInfo) releaseInfo.classList.remove('hidden');
             return true;
-          }catch(e){ console.error(e); alert('Error fetching data'); return false; }
+          }catch(e){ console.error(e); showReleaseMessage('Error fetching data', 'error'); return false; }
         }
 
         function getCookie(name) {
@@ -203,8 +205,8 @@
               const beneficiaries = this.dataset.beneficiaries || '';
               const skill = this.dataset.skill || '';
 
-              if(!id && !tracking) return alert('Missing identifier');
-              if(!currentRfid) return alert('Missing current RFID');
+              if(!id && !tracking) return showReleaseMessage('Missing identifier', 'error');
+              if(!currentRfid) return showReleaseMessage('Missing current RFID', 'error');
 
               const confirmBtn = document.getElementById('modalConfirmRelease');
               confirmBtn.dataset.id = id || '';
@@ -225,7 +227,7 @@
           confirmBtn.addEventListener('click', async function(){
             const id = this.dataset.id;
             const tracking = this.dataset.tracking;
-            if(!id && !tracking) return alert('Missing data for release');
+              if(!id && !tracking) return showReleaseMessage('Missing data for release', 'error');
 
             try{
               const csrftoken = getCookie('csrftoken');
@@ -237,7 +239,14 @@
                 },
                 body: JSON.stringify({ id: id || null, tracking: tracking || null })
               });
-              if(!res.ok){ const txt = await res.text(); alert('Failed to release: ' + (txt || res.statusText)); return; }
+              // Try to parse JSON response; on error show server-provided message
+              let payload = null;
+              try{ payload = await res.json(); }catch(e){ payload = null; }
+              if(!res.ok){
+                const msg = (payload && payload.message) ? payload.message : (payload && payload.error ? payload.error : (await res.text()));
+                try{ showReleaseMessage(msg || 'Failed to release.', 'error'); }catch(_){ alert('Failed to release: ' + (msg || res.statusText)); }
+                return;
+              }
 
               try{ $('#confirmReleaseModal').modal('hide'); }catch(_){ }
               const btn = document.querySelector(`.release-btn[data-id="${id}"]`) || document.querySelector(`.release-btn[data-tracking="${tracking}"]`);
@@ -249,7 +258,7 @@
                 try{ const row = btn.closest('tr'); if(row){ const releasedCell = row.querySelector('td:nth-child(2)'); if(releasedCell) releasedCell.textContent = 'Yes'; } }catch(e){}
                 try{ showReleaseMessage('TUPAD released successfully.'); }catch(_){ }
               }
-            }catch(err){ console.error(err); alert('Network error while releasing'); }
+            }catch(err){ console.error(err); try{ showReleaseMessage('Network error while releasing', 'error'); }catch(_){ alert('Network error while releasing'); } }
           });
 
           function showModal(){ try{ $('#rfidModal').modal({backdrop:'static', keyboard:false}); $('#rfidModal').modal('show'); $('#rfidModal').on('shown.bs.modal', function () { $('#modalRfid').trigger('focus'); }); }catch(err){ modalRfid.focus(); } }

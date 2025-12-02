@@ -159,7 +159,9 @@
         const reapList = document.getElementById('reapList');
         const modalRfid = document.getElementById('modalRfid');
 
-        function showError(msg){ alert(msg); }
+        function showError(msg){
+          try{ showReleaseMessage(msg || 'Error', 'error'); }catch(_){ /* swallow */ }
+        }
 
         // release message helpers (display under the subtitle)
         const releaseMessageEl = document.getElementById('releaseMessage');
@@ -170,6 +172,8 @@
           releaseMessageEl.classList.add(type === 'error' ? 'error' : 'success');
           // ensure visible
           releaseMessageEl.style.display = '';
+          // close any open confirm modal to keep UI consistent
+          try{ $('#confirmReleaseModal').modal('hide'); }catch(_){ }
           // auto-hide after timeout
           if(timeout && timeout > 0){
             setTimeout(()=>{
@@ -202,7 +206,7 @@
           clearReleaseMessage();
           try{
             const res = await fetch(`/get/registration_reap/${encodeURIComponent(rfid)}/`);
-            if(!res.ok){ showError('Registration not found'); return false; }
+            if(!res.ok){ showReleaseMessage('Registration not found', 'error'); return false; }
             const data = await res.json();
             profilePic.src = data.profile_pic_url || '';
             nameEl.textContent = `${data.first_name || ''} ${data.last_name || ''}`;
@@ -221,7 +225,7 @@
             // reveal the info section inside the single card
             if(releaseInfo) releaseInfo.classList.remove('hidden');
             return true;
-          }catch(e){ console.error(e); showError('Error fetching data'); return false; }
+          }catch(e){ console.error(e); showReleaseMessage('Error fetching data', 'error'); return false; }
         }
 
         // CSRF helper (reads cookie by name)
@@ -243,8 +247,8 @@
               const ayYear = this.dataset.ayYear || this.dataset.ayStart || '';
               const semName = this.dataset.semesterName || '';
 
-              if(!ayId) return showError('Missing academic year id');
-              if(!currentRfid) return showError('Missing current RFID context');
+              if(!ayId) return showReleaseMessage('Missing academic year id', 'error');
+              if(!currentRfid) return showReleaseMessage('Missing current RFID context', 'error');
 
               // store selected context on confirm button
               const confirmBtn = document.getElementById('modalConfirmRelease');
@@ -257,7 +261,10 @@
               document.getElementById('modalSemester').textContent = semName;
 
               // show modal
-              try{ $('#confirmReleaseModal').modal('show'); }catch(_){ alert('Release: ' + (ayStart + ' - ' + ayEnd)); }
+              try{ $('#confirmReleaseModal').modal('show'); }catch(_){
+                // Fallback: show message in-page when modal plugin unavailable
+                showReleaseMessage(`Release: ${ayYear} ${semName ? '(' + semName + ')' : ''}`, 'error');
+              }
             });
           });
         }
@@ -280,9 +287,12 @@
                 },
                 body: JSON.stringify({ academic_year_id: ayId, rfid: rfid })
               });
+              // Try to parse JSON response; on error show server-provided message
+              let payload = null;
+              try{ payload = await res.json(); }catch(e){ payload = null; }
               if(!res.ok){
-                const txt = await res.text();
-                showError('Failed to release: ' + (txt || res.statusText));
+                const msg = (payload && payload.message) ? payload.message : (payload && payload.error ? payload.error : (await res.text()));
+                try{ showReleaseMessage(msg || 'Failed to release.', 'error'); }catch(_){ showError(msg || 'Failed to release'); }
                 return;
               }
 
@@ -305,7 +315,7 @@
                 // show a brief confirmation message under the subtitle
                 try{ showReleaseMessage('REAP released successfully.'); }catch(_){ }
               }
-            }catch(err){ console.error(err); showError('Network error while releasing'); }
+            }catch(err){ console.error(err); try{ showReleaseMessage('Network error while releasing', 'error'); }catch(_){ showError('Network error while releasing'); } }
           });
         });
 
