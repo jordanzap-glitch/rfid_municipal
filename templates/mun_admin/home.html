@@ -3,10 +3,46 @@
 {% block content %} 
 
 <section class="section">
-  <div class="section-header">
-    <h1>Municipal Admin Dashboard</h1>
+  <style>
+    /* Bigger, colored release toggle */
+    .release-center-wrapper { display:flex; align-items:center; justify-content:center; }
+    .custom-control-input.release-toggle { position: absolute; left: -9999px; }
+    .custom-control-label.release-visual { position: relative; display:inline-block; cursor:pointer; user-select:none; padding-left:70px; line-height:28px; }
+    .custom-control-label.release-visual::before { content: ''; position: absolute; left:0; top:0; width:56px; height:28px; background:#ddd; border-radius:28px; transition: background .15s ease; }
+    .custom-control-label.release-visual::after { content: ''; position: absolute; left:4px; top:4px; width:20px; height:20px; background:#fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.3); transition: transform .15s ease; }
+    .custom-control-input.release-toggle:checked + .custom-control-label.release-visual::before { background: #28a745; }
+    .custom-control-input.release-toggle:checked + .custom-control-label.release-visual::after { transform: translateX(28px); }
+    .release-status-pill { display:inline-block; min-width:44px; text-align:center; padding:4px 8px; border-radius:999px; margin-left:12px; font-weight:600; color:#fff; }
+    .release-status-pill.on { background:#28a745; }
+    .release-status-pill.off { background:#6c757d; }
+    /* responsive adjustments */
+    @media (max-width:767px){ .custom-control-label.release-visual{ padding-left:60px; } .custom-control-label.release-visual::before{ width:48px; height:24px; } .custom-control-label.release-visual::after{ width:18px; height:18px; } }
+  </style>
+
+  <div class="section-header d-flex align-items-center" style="justify-content:space-between;">
+    <div style="flex:1;">
+      <h1 class="mb-0">Municipal Admin Dashboard</h1>
+    </div>
+    <div style="flex:1;"></div>
+    <div style="flex:1;"></div>
   </div>
   <div class="section-body">
+    <!-- Release toggle moved into a small card in the body -->
+    <div class="row mb-3">
+      <div class="col-12 col-md-5 col-lg-4">
+        <div class="card">
+          <div class="card-body text-center">
+            <h5 class="card-title mb-2">Release</h5>
+            <div style="display:inline-flex; align-items:center;">
+              <input type="checkbox" id="releaseToggle" class="custom-control-input release-toggle" {% if pesostaff_release_enabled %}checked{% endif %} />
+              <label for="releaseToggle" id="releaseToggleLabel" class="custom-control-label release-visual">&nbsp;</label>
+              <span id="releaseStatusPill" class="release-status-pill {% if pesostaff_release_enabled %}on{% else %}off{% endif %}">{% if pesostaff_release_enabled %}On{% else %}Off{% endif %}</span>
+            </div>
+            <div class="mt-2 small text-muted" style="max-width:320px; margin:0 auto;">Note: Enabling this allows PESO staff to mark assistance records as released. Use with care; toggling affects all PESO staff accounts.</div>
+          </div>
+        </div>
+      </div>
+    </div>
   
     <div class="row">
       <!-- Total Population (from Registration count) -->
@@ -294,8 +330,131 @@ window.addEventListener('load', function(){
   }catch(e){ console.error('Chart error', e); }
 });
 </script>
+<!-- Confirmation Modal for Release Toggle -->
+<div class="modal fade" id="releaseConfirmModal" tabindex="-1" role="dialog" aria-labelledby="releaseConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="releaseConfirmModalLabel">Confirm Release Toggle</h5>
+      </div>
+      <div class="modal-body">
+        <p id="releaseConfirmMessage">Are you sure?</p>
+        <p class="small text-muted">This will update PESO staff accounts and affect who can mark assistance as released.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" id="releaseConfirmCancelBtn" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="releaseConfirmConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 <!-- Analytics card removed per request -->
+<script>
+// Toggle handler for enabling/disabling PESO release for pesostaff users
+function getCookie(name) {
+  var cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  var toggle = document.getElementById('releaseToggle');
+  var pill = document.getElementById('releaseStatusPill');
+  if (!toggle || !pill) return;
+  function setPillState(enabled){
+    pill.textContent = enabled ? 'On' : 'Off';
+    pill.classList.toggle('on', !!enabled);
+    pill.classList.toggle('off', !enabled);
+  }
+  // initialize pill state
+  setPillState(!!toggle.checked);
+  var pendingEnable = null;
+  toggle.addEventListener('change', function(){
+    // store desired state and revert until confirmed
+    pendingEnable = !!toggle.checked;
+    // revert checkbox UI so state only changes after confirmation
+    toggle.checked = !pendingEnable;
+    // set modal message and show confirmation
+    try {
+      var msgEl = document.getElementById('releaseConfirmMessage');
+      if (msgEl) msgEl.textContent = (pendingEnable ? 'enable' : 'disable') + ' the Release capability for PESO staff';
+      $('#releaseConfirmModal').modal({ backdrop: 'static', keyboard: false });
+      $('#releaseConfirmModal').modal('show');
+    } catch (e) {
+      // if modal not available, fallback to confirm()
+      var ok = confirm('Are you sure you want to ' + (pendingEnable ? 'enable' : 'disable') + ' the Release capability for PESO staff?');
+      if (ok) doToggle(pendingEnable);
+      else pendingEnable = null;
+    }
+  });
+
+  // Confirm modal handlers
+  var confirmBtn = document.getElementById('releaseConfirmConfirmBtn');
+  var cancelBtn = document.getElementById('releaseConfirmCancelBtn');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function(){
+      $('#releaseConfirmModal').modal('hide');
+      if (pendingEnable === null) return;
+      // apply the desired state
+      toggle.disabled = true;
+      toggle.checked = !!pendingEnable;
+      setPillState(!!pendingEnable);
+      // perform server call
+      fetch('{% url "municipal_toggle_release" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ enable: pendingEnable })
+      }).then(function(resp){
+        toggle.disabled = false;
+        if (!resp.ok) return resp.json().then(function(j){ throw j; });
+        return resp.json();
+      }).then(function(json){
+        // success: keep state
+        pendingEnable = null;
+      }).catch(function(err){
+        console.error('Toggle failed', err);
+        // revert
+        toggle.checked = !pendingEnable;
+        setPillState(toggle.checked);
+        toggle.disabled = false;
+        pendingEnable = null;
+      });
+    });
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function(){
+      // close modal and leave toggle unchanged
+      $('#releaseConfirmModal').modal('hide');
+      pendingEnable = null;
+    });
+  }
+
+  function doToggle(enable){
+    // fallback function when modal not available
+    toggle.disabled = true;
+    toggle.checked = !!enable;
+    setPillState(!!enable);
+    fetch('{% url "municipal_toggle_release" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ enable: enable })
+    }).then(function(){ toggle.disabled = false; }).catch(function(){ toggle.disabled = false; toggle.checked = !enable; setPillState(toggle.checked); });
+  }
+});
+</script>
 {% endblock %}
 

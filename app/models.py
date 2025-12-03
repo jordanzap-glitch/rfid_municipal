@@ -17,6 +17,7 @@ class CustomUser(AbstractUser):
     user_type = models.CharField(choices=USER, max_length=25)
     profile_pic = models.ImageField(upload_to='profile_pic/')
     email = models.EmailField(max_length=150, unique=True)
+    can_release = models.BooleanField(default=False)
     
 
 class Semester(models.Model):
@@ -155,6 +156,7 @@ class Bsrcenter(models.Model):
     processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
     actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_bsrcenters', blank=True, null=True)
     actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
+    is_completed = models.BooleanField(default=False)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
@@ -186,7 +188,8 @@ class Bsrcenter_Burial(models.Model):
     processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
     actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_bsrcenter_burials', blank=True, null=True)
     actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
-     
+    is_completed = models.BooleanField(default=False)
+    
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
         if self.processed_by:
@@ -221,6 +224,7 @@ class Peso_reap(models.Model):
     actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
     released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='released_peso_reaps', blank=True, null=True)
     released_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
+    is_completed = models.BooleanField(default=False)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]
@@ -251,6 +255,7 @@ class Peso_tupad(models.Model):
     actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
     released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='released_peso_tupads', blank=True, null=True)   
     released_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
+    is_completed = models.BooleanField(default=False)
     
     def __str__(self):
         parts = [str(self.registration), f"Tracking Number: {self.tracking_number or self.id}"]

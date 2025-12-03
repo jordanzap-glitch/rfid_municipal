@@ -45,6 +45,7 @@ urlpatterns = [
     #municipal admin
     path('municipaladmin/home', munadmin_views.home, name='municipaladmin_home'),
     path('municipaladmin/analytics_home', munadmin_views.analytics_home, name='municipaladmin_analytics_home'),
+    path('municipaladmin/toggle_release/', munadmin_views.TOGGLE_PESO_RELEASE, name='municipal_toggle_release'),
     path('municipaladmin/medicals', munadmin_views.MEDICAL_TABLE, name='municipal_medical_table'),
     path('municipaladmin/burials', munadmin_views.BURIAL_TABLE, name='municipal_burial_table'),
     path('municipaladmin/reap', munadmin_views.REAP_TABLE, name='municipal_reap_table'),

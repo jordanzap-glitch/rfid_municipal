@@ -89,6 +89,60 @@ def REAP_FORM(request):
             except Exception:
                 reap_type_display = ''
 
+        # Support follow-up: if a hidden `reap_id` is provided, update that record
+        # We handle this early so follow-up updates are not blocked by the
+        # "existing unreleased REAP" creation checks that follow.
+        existing_reap_id = request.POST.get('reap_id') or request.POST.get('existing_reap_id')
+        if existing_reap_id:
+            try:
+                reap_obj = Peso_reap.objects.get(pk=int(existing_reap_id))
+                # ensure the reap belongs to the scanned registration
+                if getattr(reap_obj.registration, 'id', None) != registration.id:
+                    messages.error(request, 'Referenced REAP does not belong to this registration.')
+                    return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
+
+                # update document fields and completion flag
+                reap_obj.biodata = biodata
+                reap_obj.certificate_of_reg = cert_registration
+                reap_obj.certificate_of_grades = cert_grades
+                reap_obj.official_receipt = official_receipt
+                reap_obj.barangay_indigency = barangay_indigency
+                reap_obj.barangay_recidency = barangay_recidency
+                try:
+                    if request.user and request.user.is_authenticated:
+                        reap_obj.processed_by_id = request.user.id
+                except Exception:
+                    pass
+                # set completion flags if model has them
+                try:
+                    reap_obj.is_completed = bool(biodata and cert_registration and cert_grades and official_receipt and barangay_indigency and barangay_recidency)
+                except Exception:
+                    pass
+                try:
+                    reap_obj.is_complete = bool(biodata and cert_registration and cert_grades and official_receipt and barangay_indigency and barangay_recidency)
+                except Exception:
+                    pass
+                reap_obj.save()
+                messages.success(request, 'REAP updated successfully.')
+                # update session payload for modal if needed
+                request.session['recent_reap'] = {
+                    'id': reap_obj.id,
+                    'tracking_number': getattr(reap_obj, 'tracking_number', ''),
+                    'first_name': registration.first_name,
+                    'last_name': registration.last_name,
+                    'biodata': reap_obj.biodata,
+                    'certificate_of_reg': reap_obj.certificate_of_reg,
+                    'certificate_of_grades': reap_obj.certificate_of_grades,
+                    'official_receipt': reap_obj.official_receipt,
+                    'barangay_indigency': reap_obj.barangay_indigency,
+                    'barangay_recidency': reap_obj.barangay_recidency,
+                    'academic_year': ((reap_obj.Academic_year.year.strftime('%Y') if getattr(reap_obj.Academic_year, 'year', None) else '') + (f" ({reap_obj.Academic_year.semester.sem_name})" if getattr(reap_obj.Academic_year, 'semester', None) else "")) if getattr(reap_obj, 'Academic_year', None) else '',
+                }
+                return redirect('reap_form')
+            except Peso_reap.DoesNotExist:
+                messages.error(request, 'Referenced REAP not found for update.')
+                return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
+
         # Prevent creating another REAP when there is an active assistance:
         # Rules:
         # - Always block if there is an unreleased REAP (is_released == False).
@@ -108,6 +162,11 @@ def REAP_FORM(request):
             if pending_same_ay:
                 messages.error(request, 'Cannot save REAP: a pending REAP already exists for the active academic year.')
                 return render(request, 'peso_staff/reap_form.html', {'active_ay': active_ay, 'reap_types': reap_types})
+
+        # Determine if all required documents are present -> mark completed
+        all_docs_present = bool(biodata and cert_registration and cert_grades and official_receipt and barangay_indigency and barangay_recidency)
+
+        
 
         # Create the Peso_reap record
         reap = None
@@ -132,6 +191,8 @@ def REAP_FORM(request):
                             processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
                             Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
                             reap_type_id=(reap_type_id or None),
+                            # set completion flag on creation if all docs present
+                            **({'is_completed': True} if all_docs_present else {}),
                         )
                     break  # success
                 except IntegrityError:
@@ -197,6 +258,79 @@ def TUPAD_FORM(request):
         except Registration.DoesNotExist:
             messages.error(request, 'Registration not found for RFID.')
             return render(request, 'peso_staff/tupad_form.html', {'skills': skills})
+
+        # Support follow-up: if a hidden `tupad_id` is provided, update that record
+        # Handle this early so updates aren't blocked by the active_exists creation checks below.
+        existing_tupad_id = request.POST.get('tupad_id') or request.POST.get('existing_tupad_id')
+        if existing_tupad_id:
+            try:
+                tupad_obj = Peso_tupad.objects.get(pk=int(existing_tupad_id))
+                # ensure the tupad belongs to the scanned registration
+                if getattr(tupad_obj.registration, 'id', None) != registration.id:
+                    messages.error(request, 'Referenced TUPAD does not belong to this registration.')
+                    return render(request, 'peso_staff/tupad_form.html', {'skills': skills})
+
+                # parse dates for update
+                date_issued_obj = None
+                if date_issued:
+                    try:
+                        date_issued_obj = _dt.strptime(date_issued, '%Y-%m-%d').date()
+                    except Exception:
+                        date_issued_obj = None
+
+                date_issued_expiry_obj = None
+                if date_issued_expiry:
+                    try:
+                        date_issued_expiry_obj = _dt.strptime(date_issued_expiry, '%Y-%m-%d').date()
+                    except Exception:
+                        date_issued_expiry_obj = None
+
+                # Resolve skill id/name similar to create flow
+                skill_id = None
+                skill_name = ''
+                if skill_training_val:
+                    sval = skill_training_val.strip()
+                    try:
+                        sid = int(sval)
+                        if Skills_training.objects.filter(id=sid).exists():
+                            skill_id = sid
+                            skill_name = Skills_training.objects.filter(id=sid).values_list('Skills_name', flat=True).first() or ''
+                        else:
+                            skill_obj, _ = Skills_training.objects.get_or_create(Skills_name=sval)
+                            skill_id = skill_obj.id
+                            skill_name = skill_obj.Skills_name
+                    except (ValueError, TypeError):
+                        skill_obj, _ = Skills_training.objects.get_or_create(Skills_name=sval)
+                        skill_id = skill_obj.id
+                        skill_name = skill_obj.Skills_name
+
+                # Update fields
+                tupad_obj.name_of_beneficiary = name_of_beneficiary
+                tupad_obj.skills_training_id = skill_id if skill_id else None
+                tupad_obj.date_issued = date_issued_obj if date_issued_obj else None
+                tupad_obj.date_issued_expiry = date_issued_expiry_obj if date_issued_expiry_obj else None
+                try:
+                    if request.user and request.user.is_authenticated:
+                        tupad_obj.processed_by_id = request.user.id
+                except Exception:
+                    pass
+                tupad_obj.save()
+                messages.success(request, 'TUPAD updated successfully.')
+                # update session payload for modal if needed
+                request.session['recent_tupad'] = {
+                    'id': tupad_obj.id,
+                    'tracking_number': getattr(tupad_obj, 'tracking_number', ''),
+                    'first_name': registration.first_name,
+                    'last_name': registration.last_name,
+                    'name_of_beneficiary': tupad_obj.name_of_beneficiary,
+                    'skills_training': skill_name,
+                    'date_issued': tupad_obj.date_issued.strftime('%Y-%m-%d') if getattr(tupad_obj, 'date_issued', None) else '',
+                    'date_issued_expiry': tupad_obj.date_issued_expiry.strftime('%Y-%m-%d') if getattr(tupad_obj, 'date_issued_expiry', None) else '',
+                }
+                return redirect('tupad_form')
+            except Peso_tupad.DoesNotExist:
+                messages.error(request, 'Referenced TUPAD not found for update.')
+                return render(request, 'peso_staff/tupad_form.html', {'skills': skills})
 
         # Prevent creating another TUPAD when there is an active assistance:
         # - a TUPAD that is not yet released (is_released == False), OR
@@ -362,12 +496,33 @@ def GET_REGISTRATION_REAP(request, rfid):
 
             prev_list.append({
                 'tracking_number': prev.tracking_number if hasattr(prev, 'tracking_number') else '',
+                'rfid': reg.rfid,
+                'first_name': reg.first_name,
+                'last_name': reg.last_name,
+                'middle_name': reg.middle_name,
+                'name_extension': reg.name_extension,
+                'date_of_birth': reg.date_of_birth.strftime('%Y-%m-%d') if reg.date_of_birth else '',
+                'place_of_birth': reg.place_of_birth,
+                'age': reg.age,
+                'zone_street': reg.zone_street or '',
+                'province_name': reg.province.province_name if reg.province else '',
+                'municipality_name': reg.municipality.municipality_name if reg.municipality else '',
+                'barangay_name': reg.barangay.barangay_name if reg.barangay else '',
+                'mobile_no': reg.mobile_no,
+                'gender': reg.gender,
+                'civil_status_name': reg.civil_status.civil_status_name if reg.civil_status else '',
+                'occupation_name': reg.occupation.occupation_name if reg.occupation else '',
+                'email': reg.email,
+                'profile_pic_url': reg.profile_pic.url if reg.profile_pic else '',
                 'biodata': bool(prev.biodata),
                 'certificate_of_reg': bool(prev.certificate_of_reg),
                 'certificate_of_grades': bool(prev.certificate_of_grades),
                 'official_receipt': bool(prev.official_receipt),
                 'barangay_indigency': bool(prev.barangay_indigency),
                 'barangay_recidency': bool(prev.barangay_recidency),
+                'is_completed': bool(prev.is_completed) if hasattr(prev, 'is_completed') else (bool(prev.is_complete) if hasattr(prev, 'is_complete') else False),
+                'reap_type_id': getattr(prev, 'reap_type_id', None) or getattr(prev, 'Reap_type_id', None),
+                'reap_type_name': (prev.reap_type.type_name if getattr(prev, 'reap_type', None) and getattr(prev.reap_type, 'type_name', None) else (getattr(prev, 'reap_type', '') or '')),
                 'date_added': prev.date_added.strftime('%Y-%m-%d') if getattr(prev, 'date_added', None) else '',
                 'academic_year': ay_display,
                 'academic_year_id': prev.Academic_year.id if getattr(prev, 'Academic_year', None) else None,

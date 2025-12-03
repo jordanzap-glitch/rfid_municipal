@@ -4,6 +4,25 @@
 {% include "includes/header.html" %}
 
 <body>
+  <style>
+    /* Global subtle background image behind the entire app */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url("{% static 'img/bg-santa-rita.jpg' %}");
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center center;
+      opacity: 0.04;
+      pointer-events: none;
+      /* place behind everything to avoid intercepting clicks or affecting stacking */
+      z-index: -1;
+      filter: saturate(0.95) brightness(1.0);
+    }
+    /* Keep app content in normal flow (no special z-index needed) */
+    #app, .main-wrapper { position: relative; z-index: auto; }
+  </style>
   <div id="app">
     <div class="main-wrapper main-wrapper-1">
       <!-- cut-->

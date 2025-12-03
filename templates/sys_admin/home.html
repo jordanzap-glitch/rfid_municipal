@@ -2,6 +2,26 @@
 {% load static %}
 {% block content %} 
 
+  <style>
+    /* Page-local full-body background inserted inside the body element */
+    .page-bg {
+      position: fixed;
+      inset: 0;
+      background-image: url("{% static 'img/bg-santa-rita.jpg' %}");
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center center;
+      opacity: 0.04;
+      pointer-events: none;
+      z-index: 0;
+      filter: saturate(0.9) brightness(1.0);
+    }
+    /* make sure page content sits above the background */
+    #app, .main-wrapper, .section { position: relative; z-index: 1; }
+  </style>
+
+  <div class="page-bg" aria-hidden="true"></div>
+
   <section class="section">
   <div class="section-header">
     <h1>

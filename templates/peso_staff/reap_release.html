@@ -59,7 +59,7 @@
   </head>
   <body>
   <a href="{% url 'pesostaff_home' %}" class="btn btn-outline-secondary btn-sm" style="position:fixed;top:12px;left:12px;z-index:1050;">&larr; Back</a>
-  <div id="releaseCard" class="card">
+  <div id="releaseCard" class="card" data-can-release="{{ user.can_release|yesno:'1,0' }}">
       <div class="card-header">
         <div>
           <h2>REAP Release</h2>
@@ -147,10 +147,33 @@
       </div>
     </div>
 
+        <!-- Release Disabled modal (shown when user isn't allowed to release) -->
+        <div class="modal fade" id="releaseDisabledModal" tabindex="-1" role="dialog" aria-labelledby="releaseDisabledLabel" aria-hidden="true">
+          <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="releaseDisabledLabel">Release Disabled</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <p>The release capability is currently disabled for your account.</p>
+                <p class="small text-muted">Contact the Municipal Admin to approve release.</p>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal">OK</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
     <script>
       (function(){
         // Elements
         const releaseCard = document.getElementById('releaseCard');
+        // Determine whether this user may perform releases (data attribute: '1' or '0')
+        const canRelease = !!(releaseCard && releaseCard.dataset && releaseCard.dataset.canRelease === '1');
         const releaseInfo = document.getElementById('releaseInfo');
         const profilePic = document.getElementById('profilePic');
         const nameEl = document.getElementById('name');
@@ -161,6 +184,15 @@
 
         function showError(msg){
           try{ showReleaseMessage(msg || 'Error', 'error'); }catch(_){ /* swallow */ }
+        }
+
+        // Show modal informing user that release is disabled for their account
+        function showReleaseDisabledModal(){
+          try{ $('#releaseDisabledModal').modal('show'); }
+          catch(e){
+            // fallback to inline message
+            showReleaseMessage('The release capability is disabled. Contact the Municipal Admin to approve release.', 'error');
+          }
         }
 
         // release message helpers (display under the subtitle)
@@ -241,7 +273,19 @@
           const buttons = document.querySelectorAll('.release-btn');
           buttons.forEach(btn => {
             if(btn.dataset.bound) return btn.dataset.bound = '1';
+            // if releases are disabled for this user, visually mute the button
+            if(!canRelease){
+              btn.classList.remove('btn-primary');
+              btn.classList.add('btn-secondary');
+              btn.title = 'Release disabled — contact Municipal Admin';
+            }
+
             btn.addEventListener('click', function(){
+              if(!canRelease){
+                // prevent release action and show informative modal
+                showReleaseDisabledModal();
+                return;
+              }
               // populate modal with AY details from data attributes
               const ayId = this.dataset.academicYearId;
               const ayYear = this.dataset.ayYear || this.dataset.ayStart || '';
@@ -273,6 +317,11 @@
         document.addEventListener('DOMContentLoaded', function(){
           const confirmBtn = document.getElementById('modalConfirmRelease');
           confirmBtn.addEventListener('click', async function(){
+            if(!canRelease){
+              // prevent accidental release if permission changed since page load
+              showReleaseDisabledModal();
+              return;
+            }
             const ayId = this.dataset.academicYearId;
             const rfid = this.dataset.rfid;
             if(!ayId || !rfid) return showError('Missing data for release');

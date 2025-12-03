@@ -22,6 +22,8 @@
                     {% else %}
                         <input type="hidden" name="academic_year_id" id="academic_year_id" value="" />
                     {% endif %}
+                        <!-- Hidden field to allow follow-up updates to an existing REAP -->
+                        <input type="hidden" name="reap_id" id="reap_id" value="" />
                     <div class="card-header">
                         <h4>Registration Information</h4>
                     </div>
@@ -127,19 +129,19 @@
                             <div class="form-group col-md-6">
                                 <label>Documents Submitted</label>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="biodata" id="biodata" style="transform: scale(1.45); margin-right: 10px;" required />
+                                    <input class="form-check-input" type="checkbox" name="biodata" id="biodata" style="transform: scale(1.45); margin-right: 10px;" />
                                     <label class="form-check-label" for="biodata" style="vertical-align: middle; font-size:1.15rem;">Biodata</label>
                                 </div>
                                 <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="cert_registration" id="cert_registration" style="transform: scale(1.45); margin-right: 10px;" required />
+                                    <input class="form-check-input" type="checkbox" name="cert_registration" id="cert_registration" style="transform: scale(1.45); margin-right: 10px;" />
                                     <label class="form-check-label" for="cert_registration" style="vertical-align: middle; font-size:1.15rem;">Certificate of Registration</label>
                                 </div>
                                 <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="cert_grades" id="cert_grades" style="transform: scale(1.45); margin-right: 10px;" required />
+                                    <input class="form-check-input" type="checkbox" name="cert_grades" id="cert_grades" style="transform: scale(1.45); margin-right: 10px;" />
                                     <label class="form-check-label" for="cert_grades" style="vertical-align: middle; font-size:1.15rem;">Certificate of Grades</label>
                                 </div>
                                 <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="official_receipt" id="official_receipt" style="transform: scale(1.45); margin-right: 10px;" required />
+                                    <input class="form-check-input" type="checkbox" name="official_receipt" id="official_receipt" style="transform: scale(1.45); margin-right: 10px;" />
                                     <label class="form-check-label" for="official_receipt" style="vertical-align: middle; font-size:1.15rem;">Official Receipt</label>
                                 </div>
                                 <div class="form-group mt-2">
@@ -152,11 +154,11 @@
                             <div class="form-group col-md-6">
                                 <!-- removed assistance_barangay per request -->
                                 <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="barangay_indigency" id="barangay_indigency" style="transform: scale(1.45); margin-right: 10px;" required />
+                                    <input class="form-check-input" type="checkbox" name="barangay_indigency" id="barangay_indigency" style="transform: scale(1.45); margin-right: 10px;" />
                                     <label class="form-check-label" for="barangay_indigency" style="vertical-align: middle; font-size:1.15rem;">Barangay Indigency</label>
                                 </div>
                                 <div class="form-check mt-3">
-                                    <input class="form-check-input" type="checkbox" name="barangay_recidency" id="barangay_recidency" style="transform: scale(1.45); margin-right: 10px;" required />
+                                    <input class="form-check-input" type="checkbox" name="barangay_recidency" id="barangay_recidency" style="transform: scale(1.45); margin-right: 10px;" />
                                     <label class="form-check-label" for="barangay_recidency" style="vertical-align: middle; font-size:1.15rem;">Barangay Residency</label>
                                 </div>
                                 <div class="form-group mt-3">
@@ -197,19 +199,21 @@
                                 <table class="table table-sm table-striped mb-0" id="previousReapTable">
                                     <thead>
                                         <tr>
-                                                <th>Tracking #</th>
-                                                <th>Academic Year</th>
-                                                <th>Biodata</th>
-                                                <th>Cert Reg</th>
-                                                <th>Cert Grades</th>
-                                                <th>Official Receipt</th>
-                                                <th>Indigency</th>
-                                                <th>Residency</th>
-                                                <th>Released</th>
-                                            </tr>
+                                            <th>Tracking #</th>
+                                            <th>Academic Year</th>
+                                            <th>Biodata</th>
+                                            <th>Cert Reg</th>
+                                            <th>Cert Grades</th>
+                                            <th>Official Receipt</th>
+                                            <th>Indigency</th>
+                                            <th>Residency</th>
+                                            <th>Completed</th>
+                                            <th>Released</th>
+                                            <th>Action</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                        <tr class="no-data-row"><td colspan="9" class="text-muted">No previous REAP found.</td></tr>
+                                        <tr class="no-data-row"><td colspan="11" class="text-muted">No previous REAP found.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -448,7 +452,7 @@ document.addEventListener('click', function(e){
         tbody.innerHTML = '';
 
         if (!slice.length) {
-            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','9'); td.className='text-muted'; td.textContent='No previous REAP found.'; tr.appendChild(td); tbody.appendChild(tr);
+            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','11'); td.className='text-muted'; td.textContent='No previous REAP found.'; tr.appendChild(td); tbody.appendChild(tr);
         } else {
             slice.forEach(function(item){
                 var tr = document.createElement('tr');
@@ -460,11 +464,69 @@ document.addEventListener('click', function(e){
                 var t5 = document.createElement('td'); t5.innerHTML = item.official_receipt ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
                 var t6 = document.createElement('td'); t6.innerHTML = item.barangay_indigency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
                 var t7 = document.createElement('td'); t7.innerHTML = item.barangay_recidency ? '<span class="text-success">&#10003;</span>' : '<span class="text-muted">No</span>';
-                var t8 = document.createElement('td'); t8.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
-                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6); tr.appendChild(t7); tr.appendChild(t8);
+                var t8 = document.createElement('td'); t8.innerHTML = (item.is_completed || item.is_complete) ? '<span class="text-success">&#10003;</span>' : '<span class="text-danger">&#10007;</span>';
+                var t9 = document.createElement('td'); t9.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
+                var t10 = document.createElement('td');
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-sm btn-outline-secondary followup-btn';
+                btn.textContent = 'Follow up';
+                btn.setAttribute('data-reap-id', item.id || '');
+                // store a JSON string of flags for convenience (include is_released)
+                var reapJson = {
+                    id: item.id || '',
+                    tracking_number: item.tracking_number || '',
+                    rfid: item.rfid || '',
+                    biodata: !!item.biodata,
+                    certificate_of_reg: !!item.certificate_of_reg,
+                    certificate_of_grades: !!item.certificate_of_grades,
+                    official_receipt: !!item.official_receipt,
+                    barangay_indigency: !!item.barangay_indigency,
+                    barangay_recidency: !!item.barangay_recidency,
+                    reap_type_id: item.reap_type_id || '',
+                    reap_type_name: item.reap_type_name || item.reap_type || '',
+                    academic_year_id: item.academic_year_id || '',
+                    academic_year: item.academic_year || '',
+                    mobile_no: item.mobile_no || '',
+                    first_name: item.first_name || '',
+                    last_name: item.last_name || '',
+                    middle_name: item.middle_name || '',
+                    name_extension: item.name_extension || '',
+                    date_of_birth: item.date_of_birth || '',
+                    place_of_birth: item.place_of_birth || '',
+                    age: item.age || '',
+                    zone_street: item.zone_street || '',
+                    gender: item.gender || '',
+                    civil_status_name: item.civil_status_name || item.civil_status || '',
+                    occupation_name: item.occupation_name || item.occupation || '',
+                    email: item.email || '',
+                    province_name: item.province_name || '',
+                    municipality_name: item.municipality_name || '',
+                    barangay_name: item.barangay_name || '',
+                    profile_pic_url: item.profile_pic_url || '',
+                    is_completed: !!item.is_completed || !!item.is_complete,
+                    is_released: !!item.is_released
+                };
+                btn.setAttribute('data-reap-json', JSON.stringify(reapJson));
+                // Disable the follow-up button for completed or released assistance
+                if (reapJson.is_completed || reapJson.is_released) {
+                    btn.disabled = true;
+                    btn.className = 'btn btn-sm btn-outline-secondary followup-btn disabled';
+                    btn.title = reapJson.is_released ? 'This assistance has already been released' : 'This assistance is already completed';
+                }
+                t10.appendChild(btn);
+                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6); tr.appendChild(t7); tr.appendChild(t8); tr.appendChild(t9); tr.appendChild(t10);
                 tbody.appendChild(tr);
             });
         }
+            // attach handlers to follow up buttons
+            setTimeout(function(){
+                var buttons = tbody.querySelectorAll('.followup-btn');
+                buttons.forEach(function(b){
+                    b.removeEventListener('click', followUpClickHandler);
+                    b.addEventListener('click', followUpClickHandler);
+                });
+            }, 0);
 
         var pageInfo = document.getElementById('pageInfoReap'); if (pageInfo) pageInfo.textContent = page + ' / ' + totalPages;
         var container = document.getElementById('previousReapContainer'); if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
@@ -484,6 +546,44 @@ document.addEventListener('click', function(e){
     });
 
     window.renderPreviousReapPage = renderPreviousReapPage;
+    
+    function followUpClickHandler(e){
+        var btn = e.currentTarget;
+        // ignore clicks on disabled buttons
+        if (btn.disabled) return;
+        var raw = btn.getAttribute('data-reap-json');
+        var obj = {};
+        try { obj = JSON.parse(raw || '{}'); } catch (ex) { obj = {}; }
+        // prevent following up on already completed/released items just in case
+        if (obj.is_completed || obj.is_released) return;
+        populateFormFromItem(obj);
+    }
+
+    function populateFormFromItem(item){
+        if (!item || !item.id) return;
+        // set hidden reap_id so server updates existing record
+        var rid = document.getElementById('reap_id'); if (rid) rid.value = item.id;
+        // set checkboxes according to item flags
+        try { document.getElementById('biodata').checked = !!item.biodata; } catch(e){}
+        try { document.getElementById('cert_registration').checked = !!item.certificate_of_reg; } catch(e){}
+        try { document.getElementById('cert_grades').checked = !!item.certificate_of_grades; } catch(e){}
+        try { document.getElementById('official_receipt').checked = !!item.official_receipt; } catch(e){}
+        try { document.getElementById('barangay_indigency').checked = !!item.barangay_indigency; } catch(e){}
+        try { document.getElementById('barangay_recidency').checked = !!item.barangay_recidency; } catch(e){}
+        // set reap type display/hidden if available
+        try {
+            if (item.reap_type_id) {
+                var rtd = document.getElementById('reap_type_display'); if (rtd) rtd.value = item.reap_type_name || 'Renew';
+                var rth = document.getElementById('reap_type'); if (rth) rth.value = item.reap_type_id || '';
+            }
+        } catch(e){}
+        // set academic year hidden if provided
+        try { if (item.academic_year_id) document.getElementById('academic_year_id').value = item.academic_year_id; } catch(e){}
+        try { if (item.academic_year) document.getElementById('academic_year').value = item.academic_year; } catch(e){}
+        // scroll to form and focus save button
+        var form = document.getElementById('assistanceForm'); if (form) form.scrollIntoView({behavior:'smooth', block:'center'});
+        var saveBtn = form ? form.querySelector('button[type="submit"]') : null; if (saveBtn) saveBtn.focus();
+    }
 })();
 </script>
 

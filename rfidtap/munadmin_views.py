@@ -1,4 +1,4 @@
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render,redirect, HttpResponse, get_object_or_404
 from django.contrib.auth import authenticate, logout, login, get_user_model
 from django.contrib import messages
@@ -10,6 +10,8 @@ from django.db.models import Count
 from django.db.models.functions import ExtractYear
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Bsrcenter, Bsrcenter_Burial, Peso_reap, Peso_tupad, Occupation, Academic_year, Semester, Medicines, Bsrcenter_meds
 import csv
+import json
+import logging
 from django.utils.encoding import smart_str
 
 
@@ -85,7 +87,46 @@ def home(request):
         'peso_reap_count': peso_reap_count,
         'peso_tupad_count': peso_tupad_count,
     })
+    # indicate whether any PESO staff currently have can_release enabled
+    try:
+        pesostaff_release_enabled = CustomUser.objects.filter(user_type='7', can_release=True).exists()
+    except Exception:
+        pesostaff_release_enabled = False
+    context.update({'pesostaff_release_enabled': pesostaff_release_enabled})
     return render(request, 'mun_admin/home.html', context)
+
+
+@require_POST
+@login_required(login_url='/')
+def TOGGLE_PESO_RELEASE(request):
+    """Toggle the `can_release` flag for all PESO staff users.
+
+    Expects JSON {"enable": true|false} in the request body.
+    Only municipal admins (user_type == '3') may perform this action.
+    """
+    # simple permission check for municipal admin
+    try:
+        if getattr(request.user, 'user_type', None) != '3':
+            return JsonResponse({'error': 'forbidden'}, status=403)
+    except Exception:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid_json'}, status=400)
+
+    enable = payload.get('enable')
+    if enable is None:
+        return JsonResponse({'error': 'missing_enable'}, status=400)
+
+    try:
+        # user_type '7' corresponds to pesostaff in your CustomUser.USER mapping
+        updated = CustomUser.objects.filter(user_type='7').update(can_release=bool(enable))
+        return JsonResponse({'success': True, 'enabled': bool(enable), 'updated_count': updated})
+    except Exception as e:
+        logging.exception('Failed to toggle peso release')
+        return JsonResponse({'error': 'db_error', 'message': str(e)}, status=500)
 
 @login_required(login_url='/')
 def analytics_home(request):

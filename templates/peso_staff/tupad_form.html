@@ -17,6 +17,8 @@
             <div class="col-12 col-md-10 col-lg-8 mx-auto">
                 <form id="assistanceForm" method="post" enctype="multipart/form-data" class="card" action="{% url 'tupad_form' %}">
                     {% csrf_token %}
+                    <!-- Hidden field to allow follow-up updates to an existing TUPAD -->
+                    <input type="hidden" name="tupad_id" id="tupad_id" value="" />
                     <div class="card-header">
                         <h4>Registration Information</h4>
                     </div>
@@ -183,10 +185,11 @@
                                             <th>Date Issued</th>
                                             <th>Issued Expiry</th>
                                             <th>Released</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr class="no-data-row"><td colspan="6" class="text-muted">No previous TUPAD found.</td></tr>
+                                        <tr class="no-data-row"><td colspan="7" class="text-muted">No previous TUPAD found.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -338,7 +341,8 @@ function submitRFID() {
             window.previousTupadData = rows;
             window.previousTupadCurrentPage = 1;
             renderPreviousTupadPage();
-
+            // Reset any existing follow-up state (we loaded a new registration)
+            try { resetTupadFormState(); } catch(e){}
             // Close modal
             $('#rfidModal').modal('hide');
         })
@@ -410,7 +414,7 @@ document.addEventListener('click', function(e){
         var tbody = table.querySelector('tbody'); tbody.innerHTML = '';
 
         if (!slice.length) {
-            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','6'); td.className='text-muted'; td.textContent='No previous TUPAD found.'; tr.appendChild(td); tbody.appendChild(tr);
+            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','7'); td.className='text-muted'; td.textContent='No previous TUPAD found.'; tr.appendChild(td); tbody.appendChild(tr);
         } else {
             slice.forEach(function(item){
                 var tr = document.createElement('tr');
@@ -420,10 +424,44 @@ document.addEventListener('click', function(e){
                 var t3 = document.createElement('td'); t3.textContent = item.date_issued || '';
                 var t4 = document.createElement('td'); t4.textContent = item.date_issued_expiry || '';
                 var t5 = document.createElement('td'); t5.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
-                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5);
+                var t6 = document.createElement('td');
+                // Follow up button to populate the form for editing an existing TUPAD
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-sm btn-outline-secondary tupad-followup-btn';
+                btn.textContent = 'Follow up';
+                // include helpful JSON payload
+                var tupadJson = {
+                    id: item.id || '',
+                    tracking_number: item.tracking_number || '',
+                    name_of_beneficiary: item.name_of_beneficiary || '',
+                    skills_training: item.skills_training || '',
+                    date_issued: item.date_issued || '',
+                    date_issued_expiry: item.date_issued_expiry || '',
+                    is_released: !!item.is_released
+                };
+                btn.setAttribute('data-tupad-json', JSON.stringify(tupadJson));
+                if (tupadJson.is_released) {
+                    btn.disabled = true;
+                    btn.className = 'btn btn-sm btn-outline-secondary tupad-followup-btn disabled';
+                    btn.title = 'This TUPAD has already been released';
+                }
+                t6.appendChild(btn);
+                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6);
                 tbody.appendChild(tr);
             });
         }
+
+        // attach handlers to follow up buttons after rendering
+        setTimeout(function(){
+            try {
+                var buttons = tbody.querySelectorAll('.tupad-followup-btn');
+                buttons.forEach(function(b){
+                    b.removeEventListener('click', tupadFollowUpClickHandler);
+                    b.addEventListener('click', tupadFollowUpClickHandler);
+                });
+            } catch(e) {}
+        }, 0);
 
         var pageInfo = document.getElementById('pageInfoTupad'); if (pageInfo) pageInfo.textContent = page + ' / ' + totalPages;
         var container = document.getElementById('previousTupadContainer'); if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
@@ -440,10 +478,66 @@ document.addEventListener('click', function(e){
 
         var container = document.getElementById('previousTupadContainer'); if (container) { container.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive: false }); }
         renderPreviousTupadPage();
+        // attach follow-up handlers after initial render
+        setTimeout(function(){
+            var tbody = document.querySelector('#previousTupadTable tbody');
+            if (!tbody) return;
+            tbody.querySelectorAll('.tupad-followup-btn').forEach(function(b){
+                b.removeEventListener('click', tupadFollowUpClickHandler);
+                b.addEventListener('click', tupadFollowUpClickHandler);
+            });
+        }, 0);
     });
 
     window.renderPreviousTupadPage = renderPreviousTupadPage;
 })();
+// Follow-up handlers for TUPAD
+function tupadFollowUpClickHandler(e) {
+    var btn = e.currentTarget;
+    if (btn.disabled) return;
+    var raw = btn.getAttribute('data-tupad-json');
+    var obj = {};
+    try { obj = JSON.parse(raw || '{}'); } catch (ex) { obj = {}; }
+    if (obj.is_released) return;
+    populateTupadFormFromItem(obj);
+}
+
+function populateTupadFormFromItem(item) {
+    if (!item || !item.id) return;
+    // set hidden tupad_id so server updates existing record
+    var tid = document.getElementById('tupad_id'); if (tid) tid.value = item.id;
+    // populate beneficiaries (comma-separated string -> textarea)
+    try { document.getElementById('beneficiaries').value = item.name_of_beneficiary || ''; } catch(e){}
+    // set skill_training by trying to match option text or id
+    try {
+        var sel = document.getElementById('skill_training');
+        if (sel) {
+            // try to set by value first
+            var found = false;
+            for (var i=0;i<sel.options.length;i++){
+                var opt = sel.options[i];
+                if (opt.value === (item.skills_training || '')) { opt.selected = true; found = true; break; }
+                if (opt.text === (item.skills_training || '')) { opt.selected = true; found = true; break; }
+            }
+            if (!found) sel.value = '';
+        }
+    } catch(e){}
+    // set dates
+    try { document.getElementById('date_issued').value = item.date_issued || ''; } catch(e){}
+    try { document.getElementById('date_issued_expiry').value = item.date_issued_expiry || ''; } catch(e){}
+    // focus submit button and scroll to form for convenience
+    var form = document.getElementById('assistanceForm'); if (form) form.scrollIntoView({behavior:'smooth', block:'center'});
+    var saveBtn = form ? form.querySelector('button[type="submit"]') : null; if (saveBtn) { saveBtn.focus(); saveBtn.textContent = 'Update Assistance'; }
+}
+
+// Reset tupad_id and submit button when loading new RFID
+function resetTupadFormState() {
+    try { var tid = document.getElementById('tupad_id'); if (tid) tid.value = ''; } catch(e){}
+    try { var saveBtn = document.querySelector('#assistanceForm button[type="submit"]'); if (saveBtn) saveBtn.textContent = 'Save Assistance'; } catch(e){}
+}
+
+// Patch submitRFID to reset tupad state when a fresh registration is loaded
+// (Find and update existing submitRFID call site above to call resetTupadFormState after render)
 </script>
 
 {% endblock %}
