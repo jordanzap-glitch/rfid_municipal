@@ -50,6 +50,8 @@ def REGISTRATION_MEMBER(request):
         age = request.POST.get('age')
         zone_street = request.POST.get('zone_street')
         end_user_type_id = request.POST.get('end_user_type')
+        ncsc_rrn = request.POST.get('ncsc_rrn')
+        osca_no = request.POST.get('osca_no')
         
         if RfidAuth.objects.filter(rfid=rfid, status='invalid', in_use=True).exists():
             messages.error(request, 'RFID is already in use or invalid.')
@@ -83,6 +85,10 @@ def REGISTRATION_MEMBER(request):
                 except (ValueError, TypeError):
                     occupation_val = None
 
+                # Normalize optional senior fields to None if blank
+                ncsc_rrn_val = ncsc_rrn if ncsc_rrn not in (None, '') else None
+                osca_no_val = osca_no if osca_no not in (None, '') else None
+
                 # Ensure an occupation was selected (server-side validation)
                 if occupation_val is None:
                     messages.error(request, 'Please select an occupation.')
@@ -113,6 +119,8 @@ def REGISTRATION_MEMBER(request):
                     age=age_val,
                     zone_street=zone_street
                     , end_user_type_id=end_user_type_val
+                    , ncsc_rrn=ncsc_rrn_val
+                    , osca_no=osca_no_val
                 )
                 registration.save()
                 # Update RfidAuth status, in_use and link to the created registration

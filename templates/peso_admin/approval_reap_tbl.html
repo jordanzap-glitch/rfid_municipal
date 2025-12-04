@@ -108,15 +108,18 @@
                                         {% else %}
                                             <div class="badge badge-secondary">{{ row.status }}</div>
                                         {% endif %}
+                                        {% if not row.is_completed %}
+                                            <span class="badge badge-danger ml-1" title="Incomplete — cannot approve until completed">Incomplete</span>
+                                        {% endif %}
                                     </td>
                                     <td data-label="Action">
-                                        <button type="button" class="btn btn-primary btn-sm view-detail-btn" data-toggle="modal" data-target="#detailModal" data-id="{{ row.registration_id }}">View</button>
+                                        <button type="button" class="btn btn-primary btn-sm view-detail-btn" data-toggle="modal" data-target="#detailModal" data-tracking="{{ row.tracking_number }}" data-id="{{ row.registration_id }}">View</button>
                                         <form method="post" class="approve-form" style="display:inline;">
                                             {% csrf_token %}
                                             <input type="hidden" name="registration_id" value="{{ row.registration_id }}">
                                             <input type="hidden" name="pesoreap_id" value="{{ row.id }}">
                                             <input type="hidden" name="target_status" value="2">
-                                            <button type="button" class="btn btn-success btn-sm approve-btn" data-id="{{ row.id }}" data-first="{{ row.first_name }}" data-last="{{ row.last_name }}" {% if row.status == 'approved' %}disabled{% endif %}>Approve</button>
+                                            <button type="button" class="btn btn-success btn-sm approve-btn" data-id="{{ row.id }}" data-first="{{ row.first_name }}" data-last="{{ row.last_name }}" {% if row.status == 'approved' or not row.is_completed %}disabled{% endif %}>Approve</button>
                                         </form>
                                         <form method="post" class="reject-form" style="display:inline;margin-left:6px;">
                                             {% csrf_token %}
@@ -356,14 +359,15 @@
             const buttons = document.querySelectorAll('.view-detail-btn');
             buttons.forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    const bsrcenterId = btn.getAttribute('data-id');
+                    // Prefer tracking number for unique detail view; fallback to registration id
+                    const tracking = btn.getAttribute('data-tracking') || btn.getAttribute('data-id');
                     // Show loading indicator
                     // show loading
                     ['last-name','first-name','mobile-no','barangay','burial-rows','status'].forEach(id => {
                         const el = document.getElementById('detail-' + id.replace(/-/g, '-')) || document.getElementById('detail-' + id) || document.getElementById(id);
                         if (el) el.textContent = 'Loading...';
                     });
-                    fetch(`/adminpeso/get_pesoreap_info?registration_id=${bsrcenterId}`)
+                    fetch(`/adminpeso/get_pesoreap_info?tracking_number=${encodeURIComponent(tracking)}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {

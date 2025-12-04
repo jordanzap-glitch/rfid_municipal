@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.db import IntegrityError
 from django.db.models import Count
 from django.db.models.functions import ExtractYear
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Bsrcenter, Bsrcenter_Burial, Peso_reap, Peso_tupad, Occupation, Academic_year, Semester, Medicines, Bsrcenter_meds
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Bsrcenter, Bsrcenter_Burial, Peso_reap, Peso_tupad, Occupation, Academic_year, Semester, Medicines, Bsrcenter_meds, Dswd_senior
 import csv
 import json
 import logging
@@ -121,8 +121,8 @@ def TOGGLE_PESO_RELEASE(request):
         return JsonResponse({'error': 'missing_enable'}, status=400)
 
     try:
-        # user_type '7' corresponds to pesostaff in your CustomUser.USER mapping
-        updated = CustomUser.objects.filter(user_type='7').update(can_release=bool(enable))
+        # user_type '7' corresponds to PESO staff and '9' to DSWD staff in CustomUser.USER mapping
+        updated = CustomUser.objects.filter(user_type__in=['7', '9']).update(can_release=bool(enable))
         return JsonResponse({'success': True, 'enabled': bool(enable), 'updated_count': updated})
     except Exception as e:
         logging.exception('Failed to toggle peso release')
@@ -353,6 +353,25 @@ def analytics_home(request):
         'tupad_released_pct': tupad_released_pct,
     })
 
+    # Compute Senior (DSWD) release progress metrics for analytics card
+    try:
+        senior_total = Dswd_senior.objects.count()
+        senior_released = Dswd_senior.objects.filter(is_released=True).count()
+    except Exception:
+        senior_total = 0
+        senior_released = 0
+
+    try:
+        senior_released_pct = int(round((senior_released / senior_total) * 100)) if senior_total else 0
+    except Exception:
+        senior_released_pct = 0
+
+    context.update({
+        'senior_total': senior_total,
+        'senior_released': senior_released,
+        'senior_released_pct': senior_released_pct,
+    })
+
     # Build yearly trend for TUPAD based on date_issued year
     try:
         tupad_counts_qs = (
@@ -373,9 +392,31 @@ def analytics_home(request):
         tupad_trend_labels = []
         tupad_trend_data = []
 
+    # Build Senior (DSWD) yearly trend based on date_issued year
+    try:
+        senior_counts_qs = (
+            Dswd_senior.objects
+            .exclude(date_issued__isnull=True)
+            .annotate(year=ExtractYear('date_issued'))
+            .values('year')
+            .annotate(count=Count('id'))
+            .order_by('year')
+        )
+        senior_trend_labels = []
+        senior_trend_data = []
+        for r in senior_counts_qs:
+            year = r.get('year')
+            senior_trend_labels.append(str(year) if year is not None else '')
+            senior_trend_data.append(r.get('count', 0))
+    except Exception:
+        senior_trend_labels = []
+        senior_trend_data = []
+
     context.update({
         'tupad_trend_labels': tupad_trend_labels,
         'tupad_trend_data': tupad_trend_data,
+        'senior_trend_labels': senior_trend_labels,
+        'senior_trend_data': senior_trend_data,
     })
 
     return render(request, 'mun_admin/analytics_home.html', context)
@@ -464,6 +505,149 @@ def MEDICAL_TABLE(request):
         })
 
     return render(request, 'mun_admin/medical_table.html', {'bsrcenter_data': data})
+
+
+@require_GET
+@login_required(login_url='/')
+def GET_BSR_CENTER_INFO_MEDS(request):
+    """Return JSON details for a Bsrcenter medical row for the modal.
+
+    Accepts query param `registration_id` which may be either the
+    `Bsrcenter.id` or a `Registration.id`. Attempts to find a matching
+    Bsrcenter record then returns basic registration fields plus a
+    `medicines` array of {name, date_claim_expiry} objects.
+    """
+    reg_id = request.GET.get('registration_id')
+    if not reg_id:
+        return JsonResponse({'error': 'missing registration_id'}, status=400)
+
+    b = None
+    try:
+        # Try to treat param as Bsrcenter.id first
+        b = (
+            Bsrcenter.objects
+            .select_related('registration', 'status')
+            .prefetch_related('bsrcenter_meds_set__medicines')
+            .get(id=int(reg_id))
+        )
+    except Exception:
+        # Fallback: try to find latest Bsrcenter row for a registration_id
+        try:
+            b = (
+                Bsrcenter.objects
+                .select_related('registration', 'status')
+                .prefetch_related('bsrcenter_meds_set__medicines')
+                .filter(registration_id=int(reg_id))
+                .order_by('-id')
+                .first()
+            )
+        except Exception:
+            b = None
+
+    if not b:
+        return JsonResponse({'error': 'not_found'}, status=404)
+
+    reg = getattr(b, 'registration', None)
+    # basic registration fields
+    resp = {
+        'rfid': getattr(reg, 'rfid', '') if reg else '',
+        'last_name': getattr(reg, 'last_name', '') if reg else '',
+        'first_name': getattr(reg, 'first_name', '') if reg else '',
+        'mobile_no': getattr(reg, 'mobile_no', '') if reg else '',
+        'barangay': getattr(reg.barangay, 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+        'status': getattr(b.status, 'status_name', '') if getattr(b, 'status', None) else '',
+        'medicines': [],
+    }
+
+    # collect medicines info from related Bsrcenter_meds
+    try:
+        for bm in b.bsrcenter_meds_set.all():
+            # preferred relation is `medicines` (prefetched); the Medicines model uses `medicine_name`
+            med_obj = getattr(bm, 'medicines', None)
+            med_name = None
+            if med_obj is not None:
+                med_name = getattr(med_obj, 'medicine_name', None) or getattr(med_obj, 'name', None)
+            # fallbacks on the bsrcenter_meds row
+            if not med_name:
+                med_name = getattr(bm, 'medicine_name', None) or getattr(bm, 'name', None) or ''
+
+            resp['medicines'].append({
+                'name': med_name,
+                'date_claim_expiry': str(getattr(bm, 'date_claim_expiry', None)) if getattr(bm, 'date_claim_expiry', None) else None,
+            })
+    except Exception:
+        # if anything goes wrong collecting medicines, return what we have
+        pass
+
+    return JsonResponse(resp)
+
+
+@require_GET
+@login_required(login_url='/')
+def GET_BSR_CENTER_INFO_BURIALS(request):
+    """Return JSON burial details for the modal.
+
+    Accepts `registration_id` which may be a Bsrcenter_Burial.id or a
+    Registration.id. Returns registration fields plus `deceased_rows` —
+    a list of burial rows for the registration (most recent first).
+    """
+    reg_id = request.GET.get('registration_id')
+    if not reg_id:
+        return JsonResponse({'error': 'missing registration_id'}, status=400)
+
+    b = None
+    try:
+        # try as Bsrcenter_Burial id first
+        b = (
+            Bsrcenter_Burial.objects
+            .select_related('registration', 'status')
+            .get(id=int(reg_id))
+        )
+    except Exception:
+        try:
+            # fallback: get latest burial for a registration id
+            b = (
+                Bsrcenter_Burial.objects
+                .select_related('registration', 'status')
+                .filter(registration_id=int(reg_id))
+                .order_by('-id')
+                .first()
+            )
+        except Exception:
+            b = None
+
+    if not b:
+        return JsonResponse({'error': 'not_found'}, status=404)
+
+    reg = getattr(b, 'registration', None)
+    reg_pk = getattr(reg, 'id', None) if reg else getattr(b, 'registration_id', None)
+
+    resp = {
+        'last_name': getattr(reg, 'last_name', '') if reg else '',
+        'first_name': getattr(reg, 'first_name', '') if reg else '',
+        'mobile_no': getattr(reg, 'mobile_no', '') if reg else '',
+        'barangay': getattr(reg.barangay, 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+        'status': getattr(b.status, 'status_name', '') if getattr(b, 'status', None) else '',
+        'deceased_rows': [],
+    }
+
+    try:
+        qs = Bsrcenter_Burial.objects.select_related('registration', 'status').filter(registration_id=reg_pk).order_by('-id')
+        for r in qs:
+            resp['deceased_rows'].append({
+                'deceased_name': getattr(r, 'deceased_name', None),
+                'relationship': getattr(r, 'relationship', None),
+                'date_claimed': str(getattr(r, 'date_claimed', None)) if getattr(r, 'date_claimed', None) else None,
+                'date_claim_expiry': str(getattr(r, 'date_claim_expiry', None)) if getattr(r, 'date_claim_expiry', None) else None,
+                'cause_of_death': getattr(r, 'cause_of_death', None),
+                'amount': getattr(r, 'amount', None),
+            })
+    except Exception:
+        # return what we have if something fails
+        pass
+
+    return JsonResponse(resp)
+
 @login_required(login_url='/')
 def BURIAL_TABLE(request):
     """Render the burials table for municipal admin (read-only).
@@ -514,6 +698,408 @@ def BURIAL_TABLE(request):
         })
 
     return render(request, 'mun_admin/burial_table.html', {'bsrcenter_data': data})
+@require_GET
+@login_required(login_url='/')
+def GET_PESO_REAP_INFO(request):
+    """Return JSON details for a Peso_reap row for the modal.
+
+    Accepts query param `reap_id` which may be either the `Peso_reap.id`
+    or a `Registration.id`. Attempts to find a matching Peso_reap record
+    then returns basic registration fields plus REAP-specific fields.
+    """
+    # Support both `reap_id` (Peso_reap id or registration id) and
+    # `tracking_number` (tracking number used in approval UI).
+    tracking = request.GET.get('tracking_number')
+    rid = request.GET.get('reap_id')
+
+    # If tracking_number provided, return a `reap_rows` array similar to admin view
+    if tracking:
+        rows = []
+        try:
+            qs = (
+                Peso_reap.objects
+                .select_related('registration', 'reap_type', 'Academic_year__semester', 'processed_by', 'status')
+                .filter(tracking_number=str(tracking))
+                .order_by('-id')
+            )
+            # attempt to capture registration-level fields from the most recent row
+            first_reg = None
+            if qs:
+                first_obj = qs[0]
+                first_reg = getattr(first_obj, 'registration', None)
+            for r in qs:
+                # processed by name
+                proc_name = ''
+                if getattr(r, 'processed_by', None):
+                    pb = r.processed_by
+                    proc_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+                # reap type name — prefer related object's fields but accept several possible names
+                reap_type_name = ''
+                try:
+                    rt = getattr(r, 'reap_type', None)
+                    reap_type_name = (
+                        (getattr(rt, 'reap_type_name', None) if rt is not None else None)
+                        or (getattr(rt, 'type_name', None) if rt is not None else None)
+                        or (getattr(rt, 'name', None) if rt is not None else None)
+                        or getattr(r, 'reap_type_name', None)
+                        or ''
+                    )
+                except Exception:
+                    reap_type_name = ''
+
+                # semester name
+                sem_name = ''
+                try:
+                    ay = getattr(r, 'Academic_year', None)
+                    if ay:
+                        sem = getattr(ay, 'semester', None)
+                        if sem:
+                            sem_name = getattr(sem, 'sem_name', '')
+                except Exception:
+                    sem_name = ''
+
+                rows.append({
+                    'tracking_number': getattr(r, 'tracking_number', ''),
+                    'reap_type_name': reap_type_name,
+                    'semester_name': sem_name,
+                    'processed_by_name': proc_name,
+                    'date_added': str(getattr(r, 'date_added', None)) if getattr(r, 'date_added', None) else None,
+                    'status_name': getattr(getattr(r, 'status', None), 'status_name', '') or getattr(r, 'status_name', ''),
+                })
+        except Exception:
+            rows = []
+
+        resp = {'reap_rows': rows}
+        # attach top-level registration fields if available so modal shows names/contact/status
+        if first_reg is not None:
+            resp.update({
+                'last_name': getattr(first_reg, 'last_name', '') or '',
+                'first_name': getattr(first_reg, 'first_name', '') or '',
+                'mobile_no': getattr(first_reg, 'mobile_no', '') or '',
+                'barangay': getattr(getattr(first_reg, 'barangay', None), 'barangay_name', '') or getattr(first_reg, 'barangay', '') or '',
+            })
+        # if rows present, also include a summary status from the most recent row
+        if rows:
+            resp.setdefault('status', rows[0].get('status_name', ''))
+
+        return JsonResponse(resp)
+
+    # Fallback: handle single-object requests via reap_id (existing behavior)
+    if not rid:
+        return JsonResponse({'error': 'missing reap_id_or_tracking_number'}, status=400)
+
+    obj = None
+    try:
+        # try to interpret as Peso_reap.id first
+        obj = (
+            Peso_reap.objects
+            .select_related('registration', 'Academic_year__semester', 'status', 'processed_by')
+            .get(id=int(rid))
+        )
+    except Exception:
+        try:
+            # fallback: latest Peso_reap row for a registration_id
+            obj = (
+                Peso_reap.objects
+                .select_related('registration', 'Academic_year__semester', 'status', 'processed_by')
+                .filter(registration_id=int(rid))
+                .order_by('-id')
+                .first()
+            )
+        except Exception:
+            obj = None
+
+    if not obj:
+        return JsonResponse({'error': 'not_found'}, status=404)
+
+    reg = getattr(obj, 'registration', None)
+    resp = {
+        'last_name': getattr(reg, 'last_name', '') if reg else '',
+        'first_name': getattr(reg, 'first_name', '') if reg else '',
+        'mobile_no': getattr(reg, 'mobile_no', '') if reg else '',
+        'barangay': getattr(reg.barangay, 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+        'status': getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else '',
+        'academic_year': getattr(getattr(obj, 'Academic_year', None), 'year', '') if getattr(obj, 'Academic_year', None) else '',
+        'semester_name': '',
+        'processed_by': '',
+        'reap_type_name': '',
+        'is_released': bool(getattr(obj, 'is_released', False)),
+        'date_added': str(getattr(obj, 'date_added', None)) if getattr(obj, 'date_added', None) else None,
+    }
+
+    # try to resolve semester name
+    try:
+        ay = getattr(obj, 'Academic_year', None)
+        if ay:
+            sem = getattr(ay, 'semester', None)
+            if sem:
+                resp['semester_name'] = getattr(sem, 'sem_name', '')
+    except Exception:
+        pass
+
+    # processed_by display
+    try:
+        if getattr(obj, 'processed_by', None):
+            pb = obj.processed_by
+            resp['processed_by'] = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+    except Exception:
+        pass
+
+    # try to resolve reap type name for single-object requests
+    try:
+        rt = getattr(obj, 'reap_type', None)
+        resp['reap_type_name'] = (
+            (getattr(rt, 'reap_type_name', None) if rt is not None else None)
+            or (getattr(rt, 'type_name', None) if rt is not None else None)
+            or (getattr(rt, 'name', None) if rt is not None else None)
+            or getattr(obj, 'reap_type_name', None)
+            or ''
+        )
+    except Exception:
+        pass
+
+    return JsonResponse(resp)
+
+
+@require_GET
+@login_required(login_url='/')
+def GET_PESO_TUPAD_INFO(request):
+    """Return Peso_tupad rows and registration info for modal.
+
+    Accepts `registration_id` or `tracking_number` (preferred). Returns
+    registration fields and `tupad_rows` array mirroring `pesoadmin_views.GET_PESO_TUPAD_INFO`.
+    """
+    registration_id = request.GET.get('registration_id') or request.GET.get('id')
+    tracking_number = request.GET.get('tracking_number')
+
+    if not registration_id and not tracking_number:
+        return JsonResponse({'error': 'missing registration_id_or_tracking_number'}, status=400)
+
+    base_qs = (
+        Peso_tupad.objects
+        .select_related('registration', 'status', 'skills_training', 'processed_by')
+        .order_by('id')
+    )
+
+    if tracking_number:
+        entries = base_qs.filter(tracking_number=tracking_number)
+    else:
+        try:
+            entries = base_qs.filter(registration_id=int(registration_id))
+        except Exception:
+            entries = base_qs.none()
+
+    if not entries.exists():
+        return JsonResponse({'error': 'not_found'}, status=404)
+
+    reg = entries[0].registration
+
+    rows = []
+    statuses = set()
+    for e in entries:
+        sid = getattr(e.status, 'id', None) if getattr(e, 'status', None) else None
+        if sid == 2:
+            statuses.add('approved')
+        elif sid == 1:
+            statuses.add('pending')
+        elif sid == 3:
+            statuses.add('rejected')
+        else:
+            if getattr(e, 'status', None):
+                statuses.add(e.status.status_name)
+
+        rows.append({
+            'id': getattr(e, 'id', None),
+            'registration_id': getattr(e, 'registration_id', None),
+            'tracking_number': getattr(e, 'tracking_number', None),
+            'name_of_beneficiary': getattr(e, 'name_of_beneficiary', None),
+            'skills_training_id': getattr(e.skills_training, 'id', None) if getattr(e, 'skills_training', None) else None,
+            'skills_training_name': getattr(e.skills_training, 'Skills_name', None) if getattr(e, 'skills_training', None) else None,
+            'processed_by_id': getattr(e.processed_by, 'id', None) if getattr(e, 'processed_by', None) else None,
+            'processed_by_name': (f"{getattr(e.processed_by, 'first_name', '')} {getattr(e.processed_by, 'last_name', '')}".strip() if getattr(e, 'processed_by', None) else None),
+            'date_issued': str(getattr(e, 'date_issued', None)) if getattr(e, 'date_issued', None) else None,
+            'date_issued_expiry': str(getattr(e, 'date_issued_expiry', None)) if getattr(e, 'date_issued_expiry', None) else None,
+            'is_released': getattr(e, 'is_released', None),
+            'is_completed': getattr(e, 'is_completed', None),
+            'status_id': sid,
+            'status_name': getattr(e.status, 'status_name', None) if getattr(e, 'status', None) else None,
+        })
+
+    if 'approved' in statuses:
+        agg_status = 'approved'
+    elif 'pending' in statuses:
+        agg_status = 'pending'
+    elif 'rejected' in statuses:
+        agg_status = 'rejected'
+    else:
+        agg_status = ','.join([s for s in statuses if s]) if statuses else ''
+
+    data = {
+        'registration_id': getattr(reg, 'id', None),
+        'rfid': getattr(reg, 'rfid', None),
+        'last_name': getattr(reg, 'last_name', None),
+        'first_name': getattr(reg, 'first_name', None),
+        'mobile_no': getattr(reg, 'mobile_no', None),
+        'barangay': getattr(getattr(reg, 'barangay', None), 'barangay_name', '') if getattr(reg, 'barangay', None) else (getattr(reg, 'barangay', '') if reg else ''),
+        'tupad_rows': rows,
+        'status': agg_status,
+    }
+
+    return JsonResponse(data)
+@login_required(login_url='/')
+def SENIOR_TABLE(request):
+    """Render Dswd_senior rows for municipal admin (read-only).
+
+    Builds a `bsrcenter_data` list similar to dswd admin approval table but read-only.
+    """
+    STATUS_MAP = {1: 'pending', 2: 'approved', 3: 'rejected'}
+
+    qs = (
+        Dswd_senior.objects
+        .select_related('registration', 'status', 'processed_by')
+        .all()
+        .order_by('id')
+    )
+
+    data = []
+    for obj in qs:
+        reg = getattr(obj, 'registration', None)
+        try:
+            sid = getattr(obj.status, 'id', None) if getattr(obj, 'status', None) else None
+            st = STATUS_MAP.get(sid) or (obj.status.status_name if getattr(obj, 'status', None) else '')
+        except Exception:
+            sid = None
+            st = ''
+
+        processed_by_name = ''
+        if getattr(obj, 'processed_by', None):
+            pb = obj.processed_by
+            processed_by_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+        data.append({
+            'id': getattr(obj, 'id', None),
+            'tracking_number': getattr(obj, 'tracking_number', None),
+            'registration_id': getattr(obj, 'registration_id', None),
+            'last_name': getattr(reg, 'last_name', None) if reg else None,
+            'first_name': getattr(reg, 'first_name', None) if reg else None,
+            'date_issued': str(getattr(obj, 'date_issued', None)) if getattr(obj, 'date_issued', None) else None,
+            'date_issued_expiry': str(getattr(obj, 'date_issued_expiry', None)) if getattr(obj, 'date_issued_expiry', None) else None,
+            'processed_by': processed_by_name,
+            'status': st,
+            'status_id': sid,
+            'is_released': getattr(obj, 'is_released', None),
+            'is_completed': getattr(obj, 'is_completed', None),
+        })
+
+    return render(request, 'mun_admin/senior_table.html', {'bsrcenter_data': data})
+
+
+@require_GET
+@login_required(login_url='/')
+def GET_DSWD_SENIOR_INFO(request):
+    """Return JSON details for Dswd_senior rows for the modal.
+
+    Accepts `dswd_id` (Dswd_senior.id or registration id) or `tracking_number`.
+    Returns top-level registration fields plus `dswd_rows` array.
+    """
+    tracking = request.GET.get('tracking_number')
+    sid = request.GET.get('dswd_id') or request.GET.get('registration_id') or request.GET.get('id')
+
+    if tracking:
+        rows = []
+        first_reg = None
+        try:
+            qs = (
+                Dswd_senior.objects
+                .select_related('registration', 'status', 'processed_by')
+                .filter(tracking_number=str(tracking))
+                .order_by('-id')
+            )
+            if qs:
+                first_reg = getattr(qs[0], 'registration', None)
+            for r in qs:
+                proc_name = ''
+                if getattr(r, 'processed_by', None):
+                    pb = r.processed_by
+                    proc_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+                rows.append({
+                    'tracking_number': getattr(r, 'tracking_number', ''),
+                    'date_issued': str(getattr(r, 'date_issued', None)) if getattr(r, 'date_issued', None) else None,
+                    'date_issued_expiry': str(getattr(r, 'date_issued_expiry', None)) if getattr(r, 'date_issued_expiry', None) else None,
+                    'processed_by_name': proc_name,
+                    'status_name': getattr(getattr(r, 'status', None), 'status_name', '') or getattr(r, 'status_name', ''),
+                })
+        except Exception:
+            rows = []
+
+        resp = {'dswd_rows': rows}
+        if first_reg is not None:
+            resp.update({
+                'last_name': getattr(first_reg, 'last_name', '') or '',
+                'first_name': getattr(first_reg, 'first_name', '') or '',
+                'mobile_no': getattr(first_reg, 'mobile_no', '') or '',
+                'barangay': getattr(getattr(first_reg, 'barangay', None), 'barangay_name', '') or getattr(first_reg, 'barangay', '') or '',
+            })
+        if rows:
+            resp.setdefault('status', rows[0].get('status_name', ''))
+        return JsonResponse(resp)
+
+    if not sid:
+        return JsonResponse({'error': 'missing dswd_id_or_tracking_number'}, status=400)
+
+    obj = None
+    try:
+        obj = (
+            Dswd_senior.objects
+            .select_related('registration', 'status', 'processed_by')
+            .get(id=int(sid))
+        )
+    except Exception:
+        try:
+            obj = (
+                Dswd_senior.objects
+                .select_related('registration', 'status', 'processed_by')
+                .filter(registration_id=int(sid))
+                .order_by('-id')
+                .first()
+            )
+        except Exception:
+            obj = None
+
+    if not obj:
+        return JsonResponse({'error': 'not_found'}, status=404)
+
+    reg = getattr(obj, 'registration', None)
+    resp = {
+        'last_name': getattr(reg, 'last_name', '') if reg else '',
+        'first_name': getattr(reg, 'first_name', '') if reg else '',
+        'mobile_no': getattr(reg, 'mobile_no', '') if reg else '',
+        'barangay': getattr(getattr(reg, 'barangay', None), 'barangay_name', '') if reg and getattr(reg, 'barangay', None) else (reg.barangay if reg else ''),
+        'status': getattr(obj.status, 'status_name', '') if getattr(obj, 'status', None) else '',
+        'dswd_rows': [],
+    }
+
+    try:
+        qs = Dswd_senior.objects.select_related('registration', 'status', 'processed_by').filter(registration_id=getattr(reg, 'id', None)).order_by('-id')
+        for r in qs:
+            proc_name = ''
+            if getattr(r, 'processed_by', None):
+                pb = r.processed_by
+                proc_name = f"{getattr(pb, 'first_name', '')} {getattr(pb, 'last_name', '')}".strip()
+
+            resp['dswd_rows'].append({
+                'tracking_number': getattr(r, 'tracking_number', None),
+                'date_issued': str(getattr(r, 'date_issued', None)) if getattr(r, 'date_issued', None) else None,
+                'date_issued_expiry': str(getattr(r, 'date_issued_expiry', None)) if getattr(r, 'date_issued_expiry', None) else None,
+                'processed_by_name': proc_name,
+                'status_name': getattr(getattr(r, 'status', None), 'status_name', '') or getattr(r, 'status_name', ''),
+            })
+    except Exception:
+        pass
+
+    return JsonResponse(resp)
 @login_required(login_url='/')
 def REAP_TABLE(request):
     """Render Peso_reap rows for municipal admin.

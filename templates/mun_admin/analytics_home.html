@@ -40,7 +40,7 @@
         
         <!-- Insert REAP and TUPAD Release Progress row under Top Barangays -->
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">REAP Release Progress</h4>
@@ -68,7 +68,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
                         <h4>TUPAD Release Progress</h4>
@@ -87,11 +87,29 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Senior Release Progress</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <div>Released</div>
+                            <div>{{ senior_released|default:0 }} / {{ senior_total|default:0 }}</div>
+                        </div>
+                        <div class="progress" style="height:14px">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ senior_released_pct|default:0 }}%" aria-valuenow="{{ senior_released_pct|default:0 }}" aria-valuemin="0" aria-valuemax="100">
+                                <span class="sr-only">{{ senior_released_pct|default:0 }}% Complete</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Separate row for REAP and TUPAD trend charts -->
         <div class="row mb-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
                         <h4>REAP Submissions Trend</h4>
@@ -101,13 +119,23 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
                         <h4>TUPAD Issued Trend</h4>
                     </div>
                     <div class="card-body">
                         <div id="tupadTrendChart" style="height:300px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Senior Issued Trend</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="seniorTrendChart" style="height:300px;"></div>
                     </div>
                 </div>
             </div>
@@ -292,6 +320,37 @@ window.addEventListener('load', function(){
             if(tupEl){
                 var tupChart = new ApexCharts(tupEl, tupadOptions);
                 tupChart.render();
+            }
+        }
+
+        // Senior trend chart
+        var seniorLabels = [
+            {% for l in senior_trend_labels %}
+                "{{ l|escapejs }}"{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+        var seniorData = [
+            {% for v in senior_trend_data %}
+                {{ v }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+            {% endfor %}
+        ];
+
+        if(seniorLabels.length && seniorData.length){
+            var seniorOptions = {
+              series: [{ name: 'Senior Count', data: seniorData }],
+              chart: { height: 300, type: 'line', zoom: { enabled: false } },
+              dataLabels: { enabled: false },
+              stroke: { curve: 'straight' },
+              title: { text: 'DSWD Senior Issued by Year', align: 'left' },
+              grid: { row: { colors: ['#f3f3f3', 'transparent'], opacity: 0.5 } },
+              xaxis: { categories: seniorLabels }
+            };
+            var sEl = document.querySelector('#seniorTrendChart');
+            if(sEl){
+                var sChart = new ApexCharts(sEl, seniorOptions);
+                sChart.render();
             }
         }
 

@@ -127,7 +127,14 @@ def APPROVAL_TABLE_REAP(request):
         actioned_at = timezone.now()
 
         try:
+            # If approving (target_status == 2), ensure the record is marked completed
             if pesoreap_id:
+                obj = Peso_reap.objects.filter(id=pesoreap_id).first()
+                if obj and target_status == 2:
+                    if not getattr(obj, 'is_completed', False):
+                        messages.error(request, 'Cannot approve: assistance is not marked completed.')
+                        return redirect(request.path)
+                # perform update
                 Peso_reap.objects.filter(id=pesoreap_id).update(
                     status_id=target_status,
                     actioned_by_id=user_id,
@@ -136,6 +143,9 @@ def APPROVAL_TABLE_REAP(request):
             elif registration_id:
                 one = Peso_reap.objects.filter(registration_id=registration_id).order_by('id').first()
                 if one:
+                    if target_status == 2 and not getattr(one, 'is_completed', False):
+                        messages.error(request, 'Cannot approve: assistance is not marked completed.')
+                        return redirect(request.path)
                     Peso_reap.objects.filter(id=one.id).update(
                         status_id=target_status,
                         actioned_by_id=user_id,
@@ -198,6 +208,7 @@ def APPROVAL_TABLE_REAP(request):
             'status_id': sid,
             'date_added': str(getattr(r, 'date_added', None)) if getattr(r, 'date_added', None) else None,
             'is_released': getattr(r, 'is_released', None),
+            'is_completed': getattr(r, 'is_completed', None),
         })
 
     return render(request, 'peso_admin/approval_reap_tbl.html', {'pesoreap_data': data})
@@ -206,17 +217,26 @@ def APPROVAL_TABLE_REAP(request):
 @require_GET
 @login_required(login_url='/')
 def GET_PESO_REAP_INFO(request):
-    """AJAX GET endpoint: return Peso_reap rows for a registration_id."""
-    registration_id = request.GET.get('registration_id') or request.GET.get('id')
-    if not registration_id:
-        return JsonResponse({'error': 'Missing registration_id'}, status=400)
+    """AJAX GET endpoint: return Peso_reap rows for a registration_id or a tracking_number.
 
-    entries = (
+    Accepts either `registration_id` (legacy) or `tracking_number` (preferred for unique view).
+    """
+    registration_id = request.GET.get('registration_id') or request.GET.get('id')
+    tracking_number = request.GET.get('tracking_number')
+
+    if not registration_id and not tracking_number:
+        return JsonResponse({'error': 'Missing registration_id or tracking_number'}, status=400)
+
+    base_qs = (
         Peso_reap.objects
         .select_related('registration', 'status', 'Academic_year__semester', 'reap_type', 'processed_by')
-        .filter(registration_id=registration_id)
         .order_by('id')
     )
+
+    if tracking_number:
+        entries = base_qs.filter(tracking_number=tracking_number)
+    else:
+        entries = base_qs.filter(registration_id=registration_id)
 
     if not entries.exists():
         return JsonResponse({'error': 'Not found'}, status=404)
@@ -305,7 +325,13 @@ def APPROVAL_TABLE_TUPAD(request):
         actioned_at = timezone.now()
 
         try:
+            # If approving (target_status == 2), ensure the record is marked completed
             if pesotupad_id:
+                obj = Peso_tupad.objects.filter(id=pesotupad_id).first()
+                if obj and target_status == 2:
+                    if not getattr(obj, 'is_completed', False):
+                        messages.error(request, 'Cannot approve: assistance is not marked completed.')
+                        return redirect(request.path)
                 Peso_tupad.objects.filter(id=pesotupad_id).update(
                     status_id=target_status,
                     actioned_by_id=user_id,
@@ -314,6 +340,9 @@ def APPROVAL_TABLE_TUPAD(request):
             elif registration_id:
                 one = Peso_tupad.objects.filter(registration_id=registration_id).order_by('id').first()
                 if one:
+                    if target_status == 2 and not getattr(one, 'is_completed', False):
+                        messages.error(request, 'Cannot approve: assistance is not marked completed.')
+                        return redirect(request.path)
                     Peso_tupad.objects.filter(id=one.id).update(
                         status_id=target_status,
                         actioned_by_id=user_id,
@@ -357,6 +386,7 @@ def APPROVAL_TABLE_TUPAD(request):
             'date_issued': str(getattr(r, 'date_issued', None)) if getattr(r, 'date_issued', None) else None,
             'date_issued_expiry': str(getattr(r, 'date_issued_expiry', None)) if getattr(r, 'date_issued_expiry', None) else None,
             'is_released': getattr(r, 'is_released', None),
+            'is_completed': getattr(r, 'is_completed', None),
         })
 
     return render(request, 'peso_admin/approval_tupad_tbl.html', {'pesotupad_data': data})
@@ -365,17 +395,26 @@ def APPROVAL_TABLE_TUPAD(request):
 @require_GET
 @login_required(login_url='/')
 def GET_PESO_TUPAD_INFO(request):
-    """AJAX GET endpoint: return Peso_tupad rows for a registration_id."""
-    registration_id = request.GET.get('registration_id') or request.GET.get('id')
-    if not registration_id:
-        return JsonResponse({'error': 'Missing registration_id'}, status=400)
+    """AJAX GET endpoint: return Peso_tupad rows for a registration_id or a tracking_number.
 
-    entries = (
+    Accepts either `registration_id` (legacy) or `tracking_number` (preferred for unique view).
+    """
+    registration_id = request.GET.get('registration_id') or request.GET.get('id')
+    tracking_number = request.GET.get('tracking_number')
+
+    if not registration_id and not tracking_number:
+        return JsonResponse({'error': 'Missing registration_id or tracking_number'}, status=400)
+
+    base_qs = (
         Peso_tupad.objects
         .select_related('registration', 'status', 'skills_training', 'processed_by')
-        .filter(registration_id=registration_id)
         .order_by('id')
     )
+
+    if tracking_number:
+        entries = base_qs.filter(tracking_number=tracking_number)
+    else:
+        entries = base_qs.filter(registration_id=registration_id)
 
     if not entries.exists():
         return JsonResponse({'error': 'Not found'}, status=404)

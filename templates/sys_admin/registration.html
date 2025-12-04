@@ -137,6 +137,17 @@
                                 <input type="text" name="zone_street" id="zone_street" class="form-control" maxlength="200" placeholder="Zone / Street" />
                             </div>
                         </div>
+
+                        <div class="row" id="seniorFields" style="display:none;">
+                            <div class="form-group col-md-6">
+                                <label for="ncsc_rrn">NCSC RRN</label>
+                                <input type="text" name="ncsc_rrn" id="ncsc_rrn" class="form-control" maxlength="100" disabled />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="osca_no">OSCA No.</label>
+                                <input type="text" name="osca_no" id="osca_no" class="form-control" maxlength="100" disabled />
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="form-group col-md-4">
                                 <label for="province">Province</label>
@@ -224,6 +235,34 @@ document.addEventListener('DOMContentLoaded', function(){
         dobInput.addEventListener('change', updateAge);
         dobInput.addEventListener('input', updateAge);
         updateAge();
+    })();
+
+    // Show/hide Senior fields when end user type changes
+    (function(){
+        const endUserSelect = document.getElementById('end_user_type');
+        const seniorRow = document.getElementById('seniorFields');
+        const ncscInput = document.getElementById('ncsc_rrn');
+        const oscaInput = document.getElementById('osca_no');
+        if(!endUserSelect || !seniorRow) return;
+
+        function updateSeniorFields(){
+            const opt = endUserSelect.options[endUserSelect.selectedIndex];
+            const text = opt ? (opt.text || '').toLowerCase() : '';
+            const isSenior = text.includes('senior');
+            if(isSenior){
+                seniorRow.style.display = '';
+                if(ncscInput) ncscInput.disabled = false;
+                if(oscaInput) oscaInput.disabled = false;
+            } else {
+                seniorRow.style.display = 'none';
+                if(ncscInput){ ncscInput.disabled = true; ncscInput.value = ''; }
+                if(oscaInput){ oscaInput.disabled = true; oscaInput.value = ''; }
+            }
+        }
+
+        endUserSelect.addEventListener('change', updateSeniorFields);
+        // run on load in case browser preserved selection
+        updateSeniorFields();
     })();
 });
 </script>

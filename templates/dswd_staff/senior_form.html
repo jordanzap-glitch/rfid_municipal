@@ -1,0 +1,554 @@
+{% extends "includes/base.html" %}
+{% load static %}
+{% block content %} 
+
+
+<section class="section">
+    <div class="section-header d-flex justify-content-between align-items-center">
+        <h1>Registration Details</h1>
+        <div class="text-right">
+            <span class="text-muted" style="font-size:1rem; font-weight:600;">Tip: Press <kbd>F5</kbd> to enter RFID</span>
+        </div>
+    </div>
+
+    <div class="section-body">
+        
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8 mx-auto">
+                <form id="assistanceForm" method="post" enctype="multipart/form-data" class="card" action="{% url 'senior_form' %}">
+                    {% csrf_token %}
+                    <!-- Hidden field to allow follow-up updates to an existing DSWD senior assistance -->
+                    <input type="hidden" name="dswd_id" id="dswd_id" value="" />
+                    <div class="card-header">
+                        <h4>Registration Information</h4>
+                    </div>
+                    {% include "includes/message.html" %}
+                    <div class="card-body">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="profile-upload mr-3 text-center">
+                                <div id="profilePreview" class="profile-box">
+                                    <span style="font-size:12px;">No image<br>selected</span>
+                                </div>
+                            </div>
+                            <div class="flex-fill">
+                                <p class="text-muted mb-0">Profile image</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="rfid"></label>
+                                   <input type="hidden" name="rfid" id="rfid" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="mobile_no">Mobile Number</label>
+                                <input type="tel" name="mobile_no" id="mobile_no" class="form-control" maxlength="20" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="last_name">Last name</label>
+                                <input type="text" name="last_name" id="last_name" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="first_name">First name</label>
+                                <input type="text" name="first_name" id="first_name" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="middle_name">Middle name</label>
+                                <input type="text" name="middle_name" id="middle_name" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="name_extension">Name extension</label>
+                                <input type="text" name="name_extension" id="name_extension" class="form-control" maxlength="10" readonly />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="date_of_birth">Date of birth</label>
+                                <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label for="reg_age">Age</label>
+                                <input type="text" name="reg_age" id="reg_age" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="place_of_birth">Place of birth</label>
+                                <input type="text" name="place_of_birth" id="place_of_birth" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-3">
+                                <label for="gender">Gender</label>
+                                <input type="text" name="gender" id="gender" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="civil_status">Civil Status</label>
+                                <input type="text" name="civil_status" id="civil_status" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="occupation">Occupation</label>
+                                <input type="text" name="occupation" id="occupation" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="email">Email</label>
+                                <input type="email" name="email" id="email" class="form-control" maxlength="100" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="zone_street">Zone / Street</label>
+                                <input type="text" name="zone_street" id="zone_street" class="form-control" maxlength="200" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="ncsc_rrn">NCSC RRN</label>
+                                <input type="text" name="ncsc_rrn" id="ncsc_rrn" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="osca_no">OSCA No.</label>
+                                <input type="text" name="osca_no" id="osca_no" class="form-control" readonly />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col-md-4">
+                                <label for="province">Province</label>
+                                <input type="text" name="province" id="province" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="municipality">Municipality</label>
+                                <input type="text" name="municipality" id="municipality" class="form-control" readonly />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="barangay">Barangay</label>
+                                <input type="text" name="barangay" id="barangay" class="form-control" readonly />
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="card-header">
+                        <h4>Assistance</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="barangay_indigency" name="barangay_indigency" value="1">
+                                    <label class="form-check-label" for="barangay_indigency">Barangay Indigency</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="form-group col-md-6">
+                                <label for="date_issued">Date Issued</label>
+                                <input type="date" name="date_issued" id="date_issued" class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="date_issued_expiry">Date Issued Expiry</label>
+                                <input type="date" name="date_issued_expiry" id="date_issued_expiry" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="form-group col-md-12 text-right">
+                                <button type="submit" class="btn btn-outline-primary">Save Assistance</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <!-- Previous Assistance Card (rendered outside the assistance form card) -->
+                <div class="card mb-4 mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <h4 class="mb-0 mr-3">Previous Assistance</h4>
+                            <div class="form-inline d-none d-sm-flex align-items-center" style="gap:0.5rem;">
+                                <label for="pageSizeSelectDswd" class="mb-0 small text-muted">Rows per page</label>
+                                <select id="pageSizeSelectDswd" class="form-control form-control-sm">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="card-body">
+                        <div id="previousDswdContainer" style="max-height:320px; overflow:auto;">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-0" id="previousDswdTable">
+                                    <thead>
+                                            <tr>
+                                                <th>Tracking #</th>
+                                                <th>Barangay Indigency</th>
+                                                <th>Date Issued</th>
+                                                <th>Issued Expiry</th>
+                                                <th>Completed</th>
+                                                <th>Released</th>
+                                                <th>Action</th>
+                                            </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="no-data-row"><td colspan="7" class="text-muted">No previous assistance found.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-2" id="paginationControlsDswd">
+                            <div></div>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="pagination">
+                                <button type="button" class="btn btn-outline-primary" id="prevPageBtnDswd">Prev</button>
+                                <span class="px-3 align-self-center" id="pageInfoDswd">0 / 0</span>
+                                <button type="button" class="btn btn-outline-primary" id="nextPageBtnDswd">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- RFID Modal -->
+<div class="modal fade" id="rfidModal" tabindex="-1" role="dialog" aria-labelledby="rfidModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rfidModalLabel">Enter RFID</h5>
+      </div>
+            <div class="modal-body">
+                    <div class="mb-2 text-center text-muted">Tap the RFID to show information</div>
+                    <input type="password" id="rfidInput" class="form-control" placeholder="Scan RFID" autofocus  />
+                <div id="rfidError" class="text-danger mt-2" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+    <button type="button" class="btn btn-primary" id="rfidSubmit" style="display:none;">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Assistance Created Modal (shows after saving assistance) -->
+    <div class="modal fade" id="pesoModal" tabindex="-1" role="dialog" aria-labelledby="pesoModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pesoModalLabel">Assistance Created</h5>
+                </div>
+                    <div class="modal-body">
+                    <div class="mb-2"><strong>Assistance ID:</strong> <span id="peso_tracking">{% if recent_dswd %}{% if recent_dswd.tracking_number %}{{ recent_dswd.tracking_number }}{% else %}{{ recent_dswd.id }}{% endif %}{% endif %}</span></div>
+                    <div class="mb-2"><strong>First name:</strong> <span id="peso_first">{% if recent_dswd %}{{ recent_dswd.registration.first_name }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Last name:</strong> <span id="peso_last">{% if recent_dswd %}{{ recent_dswd.registration.last_name }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Barangay Indigency:</strong> <span id="peso_beneficiaries">{% if recent_dswd %}{{ recent_dswd.barangay_indigency|yesno:"Yes,No" }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Issued:</strong> <span id="peso_date_issued">{% if recent_dswd %}{{ recent_dswd.date_issued }}{% endif %}</span></div>
+                    <div class="mb-2"><strong>Date Issued Expiry:</strong> <span id="peso_date_issued_expiry">{% if recent_dswd %}{{ recent_dswd.date_issued_expiry }}{% endif %}</span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="pesoPrintBtn">Print</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// F5 opens RFID modal (replaces the visible Enter RFID button)
+document.addEventListener('DOMContentLoaded', function() {
+    function openRfidModal() {
+        $('#rfidModal').modal({backdrop: 'static', keyboard: false});
+        $('#rfidModal').modal('show');
+    }
+
+
+    // F5 should open the RFID modal instead of refreshing the page
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F5' || e.keyCode === 116) {
+            e.preventDefault();
+            openRfidModal();
+        }
+    });
+
+    var rfidSubmitBtn = document.getElementById('rfidSubmit');
+    if (rfidSubmitBtn) rfidSubmitBtn.onclick = submitRFID;
+
+    var rfidInput = document.getElementById('rfidInput');
+    if (rfidInput) {
+        rfidInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') submitRFID();
+        });
+        // Autofocus RFID input when modal is shown
+        $('#rfidModal').on('shown.bs.modal', function () {
+            rfidInput.focus();
+        });
+    }
+});
+
+function submitRFID() {
+    var rfid = document.getElementById('rfidInput').value.trim();
+    var errorDiv = document.getElementById('rfidError');
+    if (!rfid) {
+        errorDiv.textContent = 'Please enter RFID.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    errorDiv.style.display = 'none';
+    // AJAX to check RFID and get previous DSWD senior info
+    fetch('/get/registration_senior/' + encodeURIComponent(rfid) + '/')
+        .then(function(response) {
+            if (!response.ok) throw new Error('Not found');
+            return response.json();
+        })
+            .then(function(data) {
+            // Fill form fields
+            document.getElementById('rfid').value = data.rfid || '';
+            document.getElementById('mobile_no').value = data.mobile_no || '';
+            document.getElementById('last_name').value = data.last_name || '';
+            document.getElementById('first_name').value = data.first_name || '';
+            document.getElementById('middle_name').value = data.middle_name || '';
+            document.getElementById('name_extension').value = data.name_extension || '';
+            document.getElementById('date_of_birth').value = data.date_of_birth || '';
+            document.getElementById('place_of_birth').value = data.place_of_birth || '';
+            // populate registration age and zone/street if provided
+            if (typeof data.age !== 'undefined') {
+                var regAge = document.getElementById('reg_age');
+                if (regAge) regAge.value = data.age || '';
+            }
+            if (typeof data.zone_street !== 'undefined') {
+                var zs = document.getElementById('zone_street');
+                if (zs) zs.value = data.zone_street || '';
+            }
+            document.getElementById('gender').value = data.gender || '';
+            document.getElementById('civil_status').value = data.civil_status_name || data.civil_status || '';
+            document.getElementById('occupation').value = data.occupation_name || data.occupation || '';
+            document.getElementById('email').value = data.email || '';
+            document.getElementById('province').value = data.province_name || '';
+            document.getElementById('municipality').value = data.municipality_name || '';
+            document.getElementById('barangay').value = data.barangay_name || '';
+            // NCSC / OSCA
+            try { document.getElementById('ncsc_rrn').value = data.ncsc_rrn || ''; } catch(e){}
+            try { document.getElementById('osca_no').value = data.osca_no || ''; } catch(e){}
+            // Profile image preview
+            if (data.profile_pic_url) {
+                document.getElementById('profilePreview').style.backgroundImage = `url(${data.profile_pic_url})`;
+                document.getElementById('profilePreview').innerHTML = '';
+            } else {
+                document.getElementById('profilePreview').style.backgroundImage = '';
+                document.getElementById('profilePreview').innerHTML = '<span style="font-size:12px;">No image<br>selected</span>';
+            }
+
+            // Show previous DSWD assistance (array) - map to the DSWD table format used by the template
+                    var pa_raw = data.previous_dswd_assistance || [];
+                    var pa = (Array.isArray(pa_raw) ? pa_raw : (pa_raw ? [pa_raw] : [])).map(function(item){
+                        return {
+                            id: item.id,
+                            tracking_number: item.tracking_number || item.id || '',
+                            barangay_indigency: item.barangay_indigency ? 'Yes' : 'No',
+                            date_issued: item.date_issued || '',
+                            date_issued_expiry: item.date_issued_expiry || '',
+                            is_completed: !!item.is_completed || !!item.is_complete,
+                            is_released: item.is_released || false
+                        };
+                    });
+                    var rows = Array.isArray(pa) ? pa : (pa ? [pa] : []);
+                    window.previousDswdData = rows;
+                    window.previousDswdCurrentPage = 1;
+                    renderPreviousDswdPage();
+                    // Reset any existing follow-up state (we loaded a new registration)
+                    try { resetDswdFormState(); } catch(e){}
+            // Close modal
+            $('#rfidModal').modal('hide');
+        })
+        .catch(function() {
+            errorDiv.textContent = 'RFID not found.';
+            errorDiv.style.display = 'block';
+        });
+}
+
+// Show PESO modal if server passed a recent_reap or recent_bsr in context
+document.addEventListener('DOMContentLoaded', function() {
+    {% if recent_dswd %}
+        $('#pesoModal').modal({backdrop: 'static', keyboard: false});
+        $('#pesoModal').modal('show');
+    {% elif recent_reap %}
+        $('#pesoModal').modal({backdrop: 'static', keyboard: false});
+        $('#pesoModal').modal('show');
+    {% elif recent_bsr %}
+        $('#pesoModal').modal({backdrop: 'static', keyboard: false});
+        $('#pesoModal').modal('show');
+    {% endif %}
+});
+
+// Print modal contents in a new window (simple approach)
+document.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'pesoPrintBtn') {
+        var content = document.querySelector('#pesoModal .modal-body').innerHTML;
+        var w = window.open('', '_blank');
+        w.document.write('<html><head><title>Print Assistance</title>');
+        w.document.write('<link rel="stylesheet" href="/static/css/style.css">');
+        w.document.write('</head><body>');
+        w.document.write('<h3>Assistance Details</h3>');
+        w.document.write(content);
+        w.document.write('</body></html>');
+        w.document.close();
+        w.focus();
+        setTimeout(function(){ w.print(); w.close(); }, 500);
+    }
+});
+
+// ===== Previous DSWD Pagination & Wheel Handling =====
+(function(){
+    window.previousDswdData = window.previousDswdData || [];
+    window.previousDswdCurrentPage = window.previousDswdCurrentPage || 1;
+
+    function getDswdPageSize() {
+        var sel = document.getElementById('pageSizeSelectDswd');
+        var v = sel ? parseInt(sel.value,10) : 10;
+        if (!v || v <= 0) v = 10;
+        return v;
+    }
+
+    function renderPreviousDswdPage() {
+        var data = window.previousDswdData || [];
+        var page = window.previousDswdCurrentPage || 1;
+        var pageSize = getDswdPageSize();
+        var total = data.length;
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;
+        if (page < 1) page = 1;
+        window.previousDswdCurrentPage = page;
+
+        var start = (page - 1) * pageSize;
+        var end = Math.min(start + pageSize, total);
+        var slice = data.slice(start, end);
+
+        var table = document.getElementById('previousDswdTable');
+        if (!table) return;
+        var tbody = table.querySelector('tbody'); tbody.innerHTML = '';
+        if (!slice.length) {
+            var tr = document.createElement('tr'); var td = document.createElement('td'); td.setAttribute('colspan','7'); td.className='text-muted'; td.textContent='No previous assistance found.'; tr.appendChild(td); tbody.appendChild(tr);
+        } else {
+            slice.forEach(function(item){
+                var tr = document.createElement('tr');
+                var t0 = document.createElement('td'); t0.textContent = item.tracking_number || '';
+                var t1 = document.createElement('td');
+                // show REAP-style check mark or muted 'No' for barangay indigency
+                try {
+                    var bi = ('' + (item.barangay_indigency || '')).toLowerCase();
+                    if (bi === 'yes' || bi === 'true' || bi === '1') {
+                        t1.innerHTML = '<span class="text-success">&#10003;</span>';
+                    } else if (bi === 'no' || bi === 'false' || bi === '0') {
+                        t1.innerHTML = '<span class="text-muted">No</span>';
+                    } else {
+                        t1.textContent = item.barangay_indigency || '';
+                    }
+                } catch(e) { t1.textContent = item.barangay_indigency || ''; }
+                var t2 = document.createElement('td'); t2.textContent = item.date_issued || '';
+                var t3 = document.createElement('td'); t3.textContent = item.date_issued_expiry || '';
+                // Completed column (show green check for completed, red X for not completed)
+                var t4 = document.createElement('td');
+                t4.innerHTML = (item.is_completed || item.is_complete) ? '<span class="text-success">&#10003;</span>' : '<span class="text-danger">&#10007;</span>';
+                var t5 = document.createElement('td'); t5.innerHTML = item.is_released ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>';
+                var t6 = document.createElement('td');
+                // Follow up button to populate the form for editing an existing assistance
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-sm btn-outline-secondary dswd-followup-btn';
+                btn.textContent = 'Follow up';
+                // include helpful JSON payload
+                var dswdJson = {
+                    id: item.id || '',
+                    tracking_number: item.tracking_number || '',
+                    barangay_indigency: item.barangay_indigency || '',
+                    date_issued: item.date_issued || '',
+                    date_issued_expiry: item.date_issued_expiry || '',
+                    is_completed: !!item.is_completed || !!item.is_complete,
+                    is_released: !!item.is_released
+                };
+                btn.setAttribute('data-dswd-json', JSON.stringify(dswdJson));
+                if (dswdJson.is_released || dswdJson.is_completed) {
+                    btn.disabled = true;
+                    btn.className = 'btn btn-sm btn-outline-secondary dswd-followup-btn disabled';
+                    btn.title = dswdJson.is_released ? 'This assistance has already been released' : 'This assistance is already completed';
+                }
+                t6.appendChild(btn);
+                tr.appendChild(t0); tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3); tr.appendChild(t4); tr.appendChild(t5); tr.appendChild(t6);
+                tbody.appendChild(tr);
+            });
+        }
+
+        // attach handlers to follow up buttons after rendering
+        setTimeout(function(){
+            try {
+                var buttons = tbody.querySelectorAll('.dswd-followup-btn');
+                buttons.forEach(function(b){
+                    b.removeEventListener('click', dswdFollowUpClickHandler);
+                    b.addEventListener('click', dswdFollowUpClickHandler);
+                });
+            } catch(e) {}
+        }, 0);
+
+        var pageInfo = document.getElementById('pageInfoDswd'); if (pageInfo) pageInfo.textContent = page + ' / ' + totalPages;
+        var container = document.getElementById('previousDswdContainer'); if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        var prev = document.getElementById('prevPageBtnDswd');
+        var next = document.getElementById('nextPageBtnDswd');
+        var pageSizeSel = document.getElementById('pageSizeSelectDswd');
+
+        if (prev) prev.addEventListener('click', function(){ window.previousDswdCurrentPage = Math.max(1, (window.previousDswdCurrentPage || 1) - 1); renderPreviousDswdPage(); });
+        if (next) next.addEventListener('click', function(){ var total = (window.previousDswdData || []).length; var pages = Math.max(1, Math.ceil(total / getDswdPageSize())); window.previousDswdCurrentPage = Math.min(pages, (window.previousDswdCurrentPage || 1) + 1); renderPreviousDswdPage(); });
+        if (pageSizeSel) pageSizeSel.addEventListener('change', function(){ window.previousDswdCurrentPage = 1; renderPreviousDswdPage(); });
+
+        var container = document.getElementById('previousDswdContainer'); if (container) { container.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive: false }); }
+        renderPreviousDswdPage();
+        // attach follow-up handlers after initial render
+        setTimeout(function(){
+            var tbody = document.querySelector('#previousDswdTable tbody');
+            if (!tbody) return;
+            tbody.querySelectorAll('.dswd-followup-btn').forEach(function(b){
+                b.removeEventListener('click', dswdFollowUpClickHandler);
+                b.addEventListener('click', dswdFollowUpClickHandler);
+            });
+        }, 0);
+    });
+
+    window.renderPreviousDswdPage = renderPreviousDswdPage;
+})();
+// Follow-up handlers for DSWD senior assistance
+function dswdFollowUpClickHandler(e) {
+    var btn = e.currentTarget;
+    if (btn.disabled) return;
+    var raw = btn.getAttribute('data-dswd-json');
+    var obj = {};
+    try { obj = JSON.parse(raw || '{}'); } catch (ex) { obj = {}; }
+    // Prevent following up on released or already-completed assistance
+    if (obj.is_released || obj.is_completed) return;
+    populateDswdFormFromItem(obj);
+}
+
+function populateDswdFormFromItem(item) {
+    if (!item || !item.id) return;
+    // set hidden dswd_id so server updates existing record
+    var tid = document.getElementById('dswd_id'); if (tid) tid.value = item.id;
+    // set barangay_indigency checkbox
+    try { document.getElementById('barangay_indigency').checked = (item.barangay_indigency === 'Yes' || item.barangay_indigency === true); } catch(e){}
+    // set dates
+    try { document.getElementById('date_issued').value = item.date_issued || ''; } catch(e){}
+    try { document.getElementById('date_issued_expiry').value = item.date_issued_expiry || ''; } catch(e){}
+    // focus submit button and scroll to form for convenience
+    var form = document.getElementById('assistanceForm'); if (form) form.scrollIntoView({behavior:'smooth', block:'center'});
+    var saveBtn = form ? form.querySelector('button[type="submit"]') : null; if (saveBtn) { saveBtn.focus(); saveBtn.textContent = 'Update Assistance'; }
+}
+
+// Reset dswd_id and submit button when loading new RFID
+function resetDswdFormState() {
+    try { var tid = document.getElementById('dswd_id'); if (tid) tid.value = ''; } catch(e){}
+    try { var saveBtn = document.querySelector('#assistanceForm button[type="submit"]'); if (saveBtn) saveBtn.textContent = 'Save Assistance'; } catch(e){}
+}
+
+// Patch submitRFID to reset DSWD form state when a fresh registration is loaded
+// (The submitRFID flow already calls `resetDswdFormState()` after loading registration)
+</script>
+
+{% endblock %}

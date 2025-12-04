@@ -84,6 +84,7 @@
                                             <th>Semester</th>
                                             <th>Status</th>
                                             <th>Processed By</th>
+                                            <th>Action</th>
                                             <th>Is Released</th>
                                         </tr>
                                 </thead>
@@ -107,6 +108,9 @@
                                             {% endif %}
                                         </td>
                                         <td data-label="Processed By">{{ row.processed_by }}</td>
+                                        <td data-label="Action">
+                                            <button class="btn btn-sm btn-primary view-detail-btn" data-id="{{ row.id }}" data-tracking="{{ row.tracking_number }}" data-toggle="modal" data-target="#detailModal">View</button>
+                                        </td>
                                         <td data-label="Is Released">{% if row.is_released %}<span class="badge badge-success">&#10003;</span>{% else %}<span class="badge badge-danger">&#10007;</span>{% endif %}</td>
                                     </tr>
                                     {% endfor %}
@@ -279,56 +283,69 @@
                         const el = document.getElementById('detail-' + id.replace(/-/g, '-')) || document.getElementById('detail-' + id) || document.getElementById(id);
                         if (el) el.textContent = 'Loading...';
                     });
-                    fetch(`/admincenter/get_bsr_center_info_burials?registration_id=${bsrcenterId}`)
+                    // prefer tracking number (may be supplied by approval-style buttons)
+                    const tracking = btn.getAttribute('data-tracking');
+                    const param = tracking ? `tracking_number=${encodeURIComponent(tracking)}` : `reap_id=${bsrcenterId}`;
+                    fetch(`/municipaladmin/get_peso_reap_info?${param}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {
                                 document.getElementById('modalBodyContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-                            } else {
-                                // basic fields
-                                const map = {
-                                    'last_name': 'detail-last-name',
-                                    'first_name': 'detail-first-name',
-                                    'mobile_no': 'detail-mobile-no',
-                                    'barangay': 'detail-barangay',
-                                    'status': 'detail-status'
-                                };
-                                Object.keys(map).forEach(k => {
-                                    const el = document.getElementById(map[k]);
-                                    if (el) el.textContent = data[k] || '';
-                                });
+                                return;
+                            }
 
-                                // burial details: build a small table of rows
-                                const container = document.getElementById('detail-burial-rows');
-                                container.innerHTML = '';
-                                if (Array.isArray(data.deceased_rows) && data.deceased_rows.length) {
-                                    const tbl = document.createElement('table');
-                                    tbl.className = 'table table-sm table-striped';
-                                    const thead = document.createElement('thead');
-                                    thead.innerHTML = '<tr><th>Deceased</th><th>Relationship</th><th>Date Claimed</th><th>Expiry</th><th>Cause</th><th>Amount</th></tr>';
-                                    tbl.appendChild(thead);
-                                    const tb = document.createElement('tbody');
-                                    data.deceased_rows.forEach(r => {
-                                        const tr = document.createElement('tr');
-                                        const tdName = document.createElement('td'); tdName.textContent = r.deceased_name || '';
-                                        const tdRel = document.createElement('td'); tdRel.textContent = r.relationship || '';
-                                        const tdClaim = document.createElement('td'); tdClaim.textContent = r.date_claimed || '';
-                                        const tdExp = document.createElement('td'); tdExp.textContent = r.date_claim_expiry || '';
-                                        const tdCause = document.createElement('td'); tdCause.textContent = r.cause_of_death || '';
-                                        const tdAmt = document.createElement('td'); tdAmt.textContent = (r.amount !== null && r.amount !== undefined) ? r.amount : '';
-                                        tr.appendChild(tdName);
-                                        tr.appendChild(tdRel);
-                                        tr.appendChild(tdClaim);
-                                        tr.appendChild(tdExp);
-                                        tr.appendChild(tdCause);
-                                        tr.appendChild(tdAmt);
-                                        tb.appendChild(tr);
-                                    });
-                                    tbl.appendChild(tb);
-                                    container.appendChild(tbl);
-                                } else {
-                                    container.textContent = 'No burial records found.';
-                                }
+                            // basic fields
+                            const map = {
+                                'last_name': 'detail-last-name',
+                                'first_name': 'detail-first-name',
+                                'mobile_no': 'detail-mobile-no',
+                                'barangay': 'detail-barangay',
+                                'status': 'detail-status'
+                            };
+                            Object.keys(map).forEach(k => {
+                                const el = document.getElementById(map[k]);
+                                if (el) el.textContent = data[k] || '';
+                            });
+
+                            const container = document.getElementById('detail-burial-rows');
+                            container.innerHTML = '';
+
+                            // If we received a `reap_rows` array (approval-style), render a table
+                            if (Array.isArray(data.reap_rows) && data.reap_rows.length) {
+                                const tbl = document.createElement('table');
+                                tbl.className = 'table table-sm table-striped';
+                                const thead = document.createElement('thead');
+                                thead.innerHTML = '<tr><th>Tracking No</th><th>Reap Type</th><th>Semester</th><th>Processed By</th><th>Date Added</th><th>Status</th></tr>';
+                                tbl.appendChild(thead);
+                                const tb = document.createElement('tbody');
+                                data.reap_rows.forEach(r => {
+                                    const tr = document.createElement('tr');
+                                    const tdTrack = document.createElement('td'); tdTrack.textContent = r.tracking_number || '';
+                                    const tdType = document.createElement('td'); tdType.textContent = r.reap_type_name || '';
+                                    const tdSem = document.createElement('td'); tdSem.textContent = r.semester_name || '';
+                                    const tdProc = document.createElement('td'); tdProc.textContent = r.processed_by_name || '';
+                                    const tdDate = document.createElement('td'); tdDate.textContent = r.date_added || '';
+                                    const tdStatus = document.createElement('td'); tdStatus.textContent = r.status_name || '';
+                                    tr.appendChild(tdTrack);
+                                    tr.appendChild(tdType);
+                                    tr.appendChild(tdSem);
+                                    tr.appendChild(tdProc);
+                                    tr.appendChild(tdDate);
+                                    tr.appendChild(tdStatus);
+                                    tb.appendChild(tr);
+                                });
+                                tbl.appendChild(tb);
+                                container.appendChild(tbl);
+                            } else {
+                                // fallback: single-object REAP info
+                                const infoHtml = `
+                                    <div><strong>Academic Year:</strong> ${data.academic_year || ''}</div>
+                                    <div><strong>Semester:</strong> ${data.semester_name || ''}</div>
+                                    <div><strong>Processed By:</strong> ${data.processed_by || ''}</div>
+                                    <div><strong>Is Released:</strong> ${data.is_released ? 'Yes' : 'No'}</div>
+                                    <div><strong>Date Added:</strong> ${data.date_added || ''}</div>
+                                `;
+                                container.innerHTML = infoHtml;
                             }
                         })
                         .catch(() => {

@@ -67,6 +67,13 @@
                       <li><a class="nav-link" href="{% url 'municipal_tupad_table' %}">Tupad (PESO)</a></li>
                     </ul>
                 </li>
+                <li class="menu-header">DSWD</li>
+                  <li class="dropdown">
+                    <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>DSWD</span></a>
+                    <ul class="dropdown-menu">
+                      <li><a class="nav-link" href="{% url 'municipal_senior_table' %}">Senior Table</a></li>
+                    </ul>
+                </li>
               {% elif request.user.user_type == '4' %}
                 <!-- Center Admin Sidebar -->
                 <li class="dropdown">
@@ -137,6 +144,37 @@
                       
                     </ul>
                   </li>
+              {% elif request.user.user_type == '8' %}
+                <!-- DSWD Admin Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'admindswd_home' %}">DSWD Admin Dashboard</a></li>
+                  </ul>
+                </li>
+                <li class="menu-header">DSWD</li>
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Tables</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'approval_table_senior' %}">Senior Approval Table</a></li>
+                  </ul>
+                </li>
+              {% elif request.user.user_type == '9' %}
+                <!-- DSWD Staff Sidebar -->
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'dswdstaff_home' %}">DSWD Staff Dashboard</a></li>
+                  </ul>
+                </li>
+                <li class="menu-header">Actions</li>
+                <li class="dropdown">
+                  <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>Applications</span></a>
+                  <ul class="dropdown-menu">
+                    <li><a class="nav-link" href="{% url 'senior_form' %}">Senior Form</a></li>
+                    <li><a class="nav-link" href="{% url 'senior_release' %}">Senior Release</a></li>
+                  </ul>
+                </li>
               {% else %}
                 <!-- Default Sidebar for unknown user_type -->
                 <li><a class="nav-link" href="blank.html"><i class="far fa-square"></i> <span>Blank Page</span></a></li>

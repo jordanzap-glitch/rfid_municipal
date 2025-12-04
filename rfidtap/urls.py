@@ -18,9 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-
-from .import sysadmin_views, views, munadmin_views, centeradmin_views, centerstaff_views, pesostaff_views, pesoadmin_views
-
+from .import sysadmin_views, views, munadmin_views, centeradmin_views, centerstaff_views, pesostaff_views, pesoadmin_views, dswdadmin_views, dswdstaff_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -50,10 +48,16 @@ urlpatterns = [
     path('municipaladmin/burials', munadmin_views.BURIAL_TABLE, name='municipal_burial_table'),
     path('municipaladmin/reap', munadmin_views.REAP_TABLE, name='municipal_reap_table'),
     path('municipaladmin/tupad', munadmin_views.TUPAD_TABLE, name='municipal_tupad_table'),
+    path('municipaladmin/senior', munadmin_views.SENIOR_TABLE, name='municipal_senior_table'),
     path('municipaladmin/export/medicals/', munadmin_views.EXPORT_MEDICALS, name='municipal_export_medicals'),
     path('municipaladmin/export/burials/', munadmin_views.EXPORT_BURIALS, name='municipal_export_burials'),
     path('municipaladmin/export/reap/', munadmin_views.EXPORT_REAPS, name='municipal_export_reap'),
     path('municipaladmin/export/tupad/', munadmin_views.EXPORT_TUPADS, name='municipal_export_tupad'),
+    path('municipaladmin/get_bsr_center_info_meds', munadmin_views.GET_BSR_CENTER_INFO_MEDS, name='get_bsr_center_info_meds'),
+    path('municipaladmin/get_bsr_center_info_burials', munadmin_views.GET_BSR_CENTER_INFO_BURIALS, name='get_bsr_center_info_burials'),
+    path('municipaladmin/get_peso_tupad_info', munadmin_views.GET_PESO_TUPAD_INFO, name='get_peso_tupad_info'),
+    path('municipaladmin/get_peso_reap_info', munadmin_views.GET_PESO_REAP_INFO, name='get_peso_reap_info'),
+    path('municipaladmin/get_dswd_senior_info', munadmin_views.GET_DSWD_SENIOR_INFO, name='get_dswd_senior_info'),
 
     
     
@@ -91,4 +95,17 @@ urlpatterns = [
     path('get/registration_reap/<str:rfid>/', pesostaff_views.GET_REGISTRATION_REAP, name='get_registration_reap'),
     path('get/registration_tupad/<str:rfid>/', pesostaff_views.GET_REGISTRATION_TUPAD, name='get_registration_tupad'),  
     
+    
+    #dswd admin
+    path('dswdadmin/home', dswdadmin_views.home, name='admindswd_home'),
+    path('dswdadmin/approval_table_senior', dswdadmin_views.APPROVAL_TABLE_SENIOR, name='approval_table_senior'),
+    #path('dswdadmin/get_dswdsenior_info', dswdadmin_views.GET_DSWD_SENIOR_INFO, name='get_dswdsenior_info'),
+    
+    
+    #dswd staff
+    path('dswdstaff/home', dswdstaff_views.home, name='dswdstaff_home'),
+    path('dswdstaff/senior_form', dswdstaff_views.SENIOR_FORM, name='senior_form'),
+    path('get/registration_senior/<str:rfid>/', dswdstaff_views.GET_REGISTRATION_SENIOR, name='get_registration_senior'),
+    path('dswdstaff/senior_release', dswdstaff_views.SENIOR_RELEASE, name='senior_release'),
+    path('dswdstaff/release_senior/', dswdstaff_views.RELEASE_SENIOR, name='release_senior'),
 ]+ static(settings.MEDIA_URL,document_root = settings.MEDIA_ROOT)

@@ -86,6 +86,7 @@
                                         <th>Date Claim Expiry</th>
                                         <th>Processed By</th>
                                         <th>Status</th>
+                                        <th>Action</th>
                                     </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -109,6 +110,9 @@
                                             {% else %}
                                                 <div class="badge badge-secondary">{{ row.status }}</div>
                                             {% endif %}
+                                        </td>
+                                        <td data-label="Action">
+                                            <button type="button" class="btn btn-sm btn-primary view-detail-btn" data-id="{{ row.id }}" data-toggle="modal" data-target="#detailModal">View</button>
                                         </td>
                                         
                                     </tr>
@@ -282,7 +286,7 @@
                         const el = document.getElementById('detail-' + id.replace(/-/g, '-')) || document.getElementById(id) || document.getElementById('detail-' + id);
                         if (el) el.textContent = 'Loading...';
                     });
-                    fetch(`/admincenter/get_bsr_center_info_meds?registration_id=${bsrcenterId}`)
+                    fetch(`/municipaladmin/get_bsr_center_info_meds?registration_id=${bsrcenterId}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {

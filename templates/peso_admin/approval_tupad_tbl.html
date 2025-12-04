@@ -106,15 +106,18 @@
                                         {% else %}
                                             <div class="badge badge-secondary">{{ row.status }}</div>
                                         {% endif %}
+                                        {% if not row.is_completed %}
+                                            <span class="badge badge-danger ml-1" title="Incomplete — cannot approve until completed">Incomplete</span>
+                                        {% endif %}
                                     </td>
                                     <td data-label="Action">
-                                        <button type="button" class="btn btn-primary btn-sm view-detail-btn" data-toggle="modal" data-target="#detailModal" data-id="{{ row.registration_id }}">View</button>
+                                        <button type="button" class="btn btn-primary btn-sm view-detail-btn" data-toggle="modal" data-target="#detailModal" data-tracking="{{ row.tracking_number }}" data-id="{{ row.registration_id }}">View</button>
                                         <form method="post" class="approve-form" style="display:inline;">
                                             {% csrf_token %}
                                             <input type="hidden" name="registration_id" value="{{ row.registration_id }}">
                                             <input type="hidden" name="pesotupad_id" value="{{ row.id }}">
                                             <input type="hidden" name="target_status" value="2">
-                                            <button type="button" class="btn btn-success btn-sm approve-btn" data-id="{{ row.id }}" data-first="{{ row.first_name }}" data-last="{{ row.last_name }}" {% if row.status == 'approved' %}disabled{% endif %}>Approve</button>
+                                            <button type="button" class="btn btn-success btn-sm approve-btn" data-id="{{ row.id }}" data-first="{{ row.first_name }}" data-last="{{ row.last_name }}" {% if row.status == 'approved' or not row.is_completed %}disabled{% endif %}>Approve</button>
                                         </form>
                                         <form method="post" class="reject-form" style="display:inline;margin-left:6px;">
                                             {% csrf_token %}
@@ -232,8 +235,9 @@
                             <div class="col-6 mb-2"><span id="detail-mobile-no" style="font-size:1.25em"></span></div>
                             <div class="col-6 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">Barangay</span></div>
                             <div class="col-6 mb-2"><span id="detail-barangay" style="font-size:1.25em"></span></div>
-                            <div class="col-12 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">REAP Details</span></div>
-                            <div class="col-12 mb-2" id="detail-burial-rows" style="font-size:1.05em"></div>
+
+                            <div class="col-12 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">TUPAD Details</span></div>
+                            <div class="col-12 mb-2" id="detail-tupad-rows" style="font-size:1.05em"></div>
                             <div class="col-6 mb-2"><span class="font-weight-bold text-muted" style="font-size:1.25em">Status</span></div>
                             <div class="col-6 mb-2"><span id="detail-status" style="font-size:1.25em"></span></div>
                         </div>
@@ -354,14 +358,15 @@
             const buttons = document.querySelectorAll('.view-detail-btn');
             buttons.forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    const bsrcenterId = btn.getAttribute('data-id');
+                    // Prefer tracking number for unique detail view; fallback to registration id
+                    const tracking = btn.getAttribute('data-tracking') || btn.getAttribute('data-id');
                     // Show loading indicator
                     // show loading
                     ['last-name','first-name','mobile-no','barangay','burial-rows','status'].forEach(id => {
                         const el = document.getElementById('detail-' + id.replace(/-/g, '-')) || document.getElementById('detail-' + id) || document.getElementById(id);
                         if (el) el.textContent = 'Loading...';
                     });
-                    fetch(`/adminpeso/get_pesotupad_info?registration_id=${bsrcenterId}`)
+                    fetch(`/adminpeso/get_pesotupad_info?tracking_number=${encodeURIComponent(tracking)}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {
@@ -382,36 +387,40 @@
                                 if (el) el.textContent = data[k] || '';
                             });
 
-                            // REAP details: build a small table of rows
-                            const container = document.getElementById('detail-burial-rows');
+                            // TUPAD details: build a small table of rows
+                            const container = document.getElementById('detail-tupad-rows');
                             container.innerHTML = '';
-                            if (Array.isArray(data.reap_rows) && data.reap_rows.length) {
+                            if (Array.isArray(data.tupad_rows) && data.tupad_rows.length) {
                                 const tbl = document.createElement('table');
                                 tbl.className = 'table table-sm table-striped';
                                 const thead = document.createElement('thead');
-                                thead.innerHTML = '<tr><th>Tracking No</th><th>Reap Type</th><th>Semester</th><th>Processed By</th><th>Date Added</th><th>Status</th></tr>';
+                                thead.innerHTML = '<tr><th>Tracking No</th><th>Beneficiary</th><th>Skills</th><th>Processed By</th><th>Date Issued</th><th>Issued Expiry</th><th>Status</th><th>Released</th></tr>';
                                 tbl.appendChild(thead);
                                 const tb = document.createElement('tbody');
-                                data.reap_rows.forEach(r => {
+                                data.tupad_rows.forEach(r => {
                                     const tr = document.createElement('tr');
                                     const tdTrack = document.createElement('td'); tdTrack.textContent = r.tracking_number || '';
-                                    const tdType = document.createElement('td'); tdType.textContent = r.reap_type_name || '';
-                                    const tdSem = document.createElement('td'); tdSem.textContent = r.semester_name || '';
+                                    const tdBenef = document.createElement('td'); tdBenef.textContent = r.name_of_beneficiary || '';
+                                    const tdSkills = document.createElement('td'); tdSkills.textContent = r.skills_training_name || '';
                                     const tdProc = document.createElement('td'); tdProc.textContent = r.processed_by_name || '';
-                                    const tdDate = document.createElement('td'); tdDate.textContent = r.date_added || '';
+                                    const tdDate = document.createElement('td'); tdDate.textContent = r.date_issued || '';
+                                    const tdExpiry = document.createElement('td'); tdExpiry.textContent = r.date_issued_expiry || '';
                                     const tdStatus = document.createElement('td'); tdStatus.textContent = r.status_name || '';
+                                    const tdRel = document.createElement('td'); tdRel.textContent = r.is_released ? 'Yes' : 'No';
                                     tr.appendChild(tdTrack);
-                                    tr.appendChild(tdType);
-                                    tr.appendChild(tdSem);
+                                    tr.appendChild(tdBenef);
+                                    tr.appendChild(tdSkills);
                                     tr.appendChild(tdProc);
                                     tr.appendChild(tdDate);
+                                    tr.appendChild(tdExpiry);
                                     tr.appendChild(tdStatus);
+                                    tr.appendChild(tdRel);
                                     tb.appendChild(tr);
                                 });
                                 tbl.appendChild(tb);
                                 container.appendChild(tbl);
                             } else {
-                                container.textContent = 'No REAP records found.';
+                                container.textContent = 'No TUPAD records found.';
                             }
                         })
                         .catch(() => {

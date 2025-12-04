@@ -1,0 +1,97 @@
+{% extends "includes/base.html" %}
+{% load static %}
+{% block content %} 
+
+  <section class="section">
+  <div class="section-header">
+    <h1>
+      MSWD Admin Dashboard
+    </h1>
+  </div>
+  <div class="section-body">
+
+    <div class="mb-3 font-weight-bold">Senior (DSWD)</div>
+    <!-- Senior release progress: shows released / total -->
+    <div class="mb-3">
+      <div class="d-flex justify-content-between small mb-1">
+        <div>Released</div>
+        <div>{{ senior_released_count|default:0 }} / {{ senior_total|default:0 }}</div>
+      </div>
+      <div class="progress" style="height:12px">
+        <div class="progress-bar bg-success" role="progressbar" style="width: {{ senior_released_pct|default:0 }}%" aria-valuenow="{{ senior_released_pct|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+    </div>
+    <div class="row">
+      <!-- Senior Beneficiaries -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-primary">
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Senior Beneficiaries</h4>
+            </div>
+            <div class="card-body">
+              {{ senior_total }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Senior Pending -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-warning">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Senior Pending</h4>
+            </div>
+            <div class="card-body">
+              {{ senior_pending }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Senior Approve -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-success">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Senior Approve</h4>
+            </div>
+            <div class="card-body">
+              {{ senior_approved }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Senior Reject -->
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-danger">
+            <i class="fas fa-times-circle"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Senior Reject</h4>
+            </div>
+            <div class="card-body">
+              {{ senior_rejected }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+{% endblock %}

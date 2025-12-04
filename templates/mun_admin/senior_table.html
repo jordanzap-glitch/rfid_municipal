@@ -38,14 +38,14 @@
     
 <section class="section">
     <div class="section-header">
-        <h1>Burial Table</h1>
+        <h1>Senior Table</h1>
     </div>
     <div class="section-body">
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
                     <div class="d-flex align-items-center">
-                        <h4 class="mb-0">Burial Table</h4>
+                        <h4 class="mb-0">TUPAD Table</h4>
                         <div class="ml-3" style="min-width:120px;">
                             <select id="rowsPerPageSelect" class="form-control form-control-sm">
                                 <option value="5">5 rows</option>
@@ -77,19 +77,16 @@
                         <table id="InformationTable" class="table table-striped table-md">
                                 <thead>
                                     <tr>
-                                        <th>Tracking Number</th>
-                                        <th>Last Name</th>
-                                        <th>First Name</th>
-                                        <th>Mobile No</th>
-                                        <th>Barangay</th>
-                                        <th>Deceased Name</th>
-                                        <th>Relationship</th>
-                                        <th>Amount</th>
-                                        <th>Date Claim Expiry</th>
-                                        <th>Processed By</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
-                                    </tr>
+                                                    <th>Tracking Number</th>
+                                                    <th>Last Name</th>
+                                                    <th>First Name</th>
+                                                    <th>Date Issued</th>
+                                                    <th>Date Expiry</th>
+                                                    <th>Status</th>
+                                                    <th>Processed by</th>
+                                                    <th>Action</th>
+                                                    <th>Is Released</th>
+                                                </tr>
                                 </thead>
                             <tbody id="tableBody">
                                     {% for row in bsrcenter_data %}
@@ -97,13 +94,8 @@
                                         <td data-label="Tracking Number">{{ row.tracking_number }}</td>
                                         <td class="search-last-name" data-label="Last Name">{{ row.last_name }}</td>
                                         <td class="search-first-name" data-label="First Name">{{ row.first_name }}</td>
-                                        <td data-label="Mobile No">{{ row.mobile_no }}</td>
-                                        <td data-label="Barangay">{{ row.barangay }}</td>
-                                        <td data-label="Deceased Name">{{ row.deceased_name }}</td>
-                                        <td data-label="Relationship">{{ row.relationship }}</td>
-                                        <td data-label="Amount">{{ row.amount }}</td>
-                                        <td data-label="Date Claim Expiry">{{ row.date_claim_expiry }}</td>
-                                        <td data-label="Processed By">{{ row.processed_by }}</td>
+                                        <td data-label="Date Issued">{{ row.date_issued }}</td>
+                                        <td data-label="Date Expiry">{{ row.date_issued_expiry }}</td>
                                         <td data-label="Status">
                                             {% if row.status == 'approved' %}
                                                 <div class="badge badge-success">Approved</div>
@@ -115,9 +107,11 @@
                                                 <div class="badge badge-secondary">{{ row.status }}</div>
                                             {% endif %}
                                         </td>
+                                        <td data-label="Processed By">{{ row.processed_by }}</td>
                                         <td data-label="Action">
-                                            <button type="button" class="btn btn-sm btn-primary view-detail-btn" data-id="{{ row.id }}" data-toggle="modal" data-target="#detailModal">View</button>
+                                            <button class="btn btn-sm btn-primary view-detail-btn" data-id="{{ row.id }}" data-tracking="{{ row.tracking_number }}" data-toggle="modal" data-target="#detailModal">View</button>
                                         </td>
+                                        <td data-label="Is Released">{% if row.is_released %}<span class="badge badge-success">&#10003;</span>{% else %}<span class="badge badge-danger">&#10007;</span>{% endif %}</td>
                                         
                                     </tr>
                                     {% endfor %}
@@ -290,56 +284,57 @@
                         const el = document.getElementById('detail-' + id.replace(/-/g, '-')) || document.getElementById('detail-' + id) || document.getElementById(id);
                         if (el) el.textContent = 'Loading...';
                     });
-                    fetch(`/municipaladmin/get_bsr_center_info_burials?registration_id=${bsrcenterId}`)
+                    const tracking = btn.getAttribute('data-tracking');
+                    const param = tracking ? `tracking_number=${encodeURIComponent(tracking)}` : `dswd_id=${bsrcenterId}`;
+                    fetch(`/municipaladmin/get_dswd_senior_info?${param}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {
                                 document.getElementById('modalBodyContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-                            } else {
-                                // basic fields
-                                const map = {
-                                    'last_name': 'detail-last-name',
-                                    'first_name': 'detail-first-name',
-                                    'mobile_no': 'detail-mobile-no',
-                                    'barangay': 'detail-barangay',
-                                    'status': 'detail-status'
-                                };
-                                Object.keys(map).forEach(k => {
-                                    const el = document.getElementById(map[k]);
-                                    if (el) el.textContent = data[k] || '';
-                                });
+                                return;
+                            }
 
-                                // burial details: build a small table of rows
-                                const container = document.getElementById('detail-burial-rows');
-                                container.innerHTML = '';
-                                if (Array.isArray(data.deceased_rows) && data.deceased_rows.length) {
-                                    const tbl = document.createElement('table');
-                                    tbl.className = 'table table-sm table-striped';
-                                    const thead = document.createElement('thead');
-                                    thead.innerHTML = '<tr><th>Deceased</th><th>Relationship</th><th>Date Claimed</th><th>Expiry</th><th>Cause</th><th>Amount</th></tr>';
-                                    tbl.appendChild(thead);
-                                    const tb = document.createElement('tbody');
-                                    data.deceased_rows.forEach(r => {
-                                        const tr = document.createElement('tr');
-                                        const tdName = document.createElement('td'); tdName.textContent = r.deceased_name || '';
-                                        const tdRel = document.createElement('td'); tdRel.textContent = r.relationship || '';
-                                        const tdClaim = document.createElement('td'); tdClaim.textContent = r.date_claimed || '';
-                                        const tdExp = document.createElement('td'); tdExp.textContent = r.date_claim_expiry || '';
-                                        const tdCause = document.createElement('td'); tdCause.textContent = r.cause_of_death || '';
-                                        const tdAmt = document.createElement('td'); tdAmt.textContent = (r.amount !== null && r.amount !== undefined) ? r.amount : '';
-                                        tr.appendChild(tdName);
-                                        tr.appendChild(tdRel);
-                                        tr.appendChild(tdClaim);
-                                        tr.appendChild(tdExp);
-                                        tr.appendChild(tdCause);
-                                        tr.appendChild(tdAmt);
-                                        tb.appendChild(tr);
-                                    });
-                                    tbl.appendChild(tb);
-                                    container.appendChild(tbl);
-                                } else {
-                                    container.textContent = 'No burial records found.';
-                                }
+                            // basic fields
+                            const map = {
+                                'last_name': 'detail-last-name',
+                                'first_name': 'detail-first-name',
+                                'mobile_no': 'detail-mobile-no',
+                                'barangay': 'detail-barangay',
+                                'status': 'detail-status'
+                            };
+                            Object.keys(map).forEach(k => {
+                                const el = document.getElementById(map[k]);
+                                if (el) el.textContent = data[k] || '';
+                            });
+
+                            // DSWD senior details: render a small table of rows
+                            const container = document.getElementById('detail-burial-rows');
+                            container.innerHTML = '';
+                            if (Array.isArray(data.dswd_rows) && data.dswd_rows.length) {
+                                const tbl = document.createElement('table');
+                                tbl.className = 'table table-sm table-striped';
+                                const thead = document.createElement('thead');
+                                thead.innerHTML = '<tr><th>Tracking No</th><th>Date Issued</th><th>Date Expiry</th><th>Processed By</th><th>Status</th></tr>';
+                                tbl.appendChild(thead);
+                                const tb = document.createElement('tbody');
+                                data.dswd_rows.forEach(r => {
+                                    const tr = document.createElement('tr');
+                                    const tdTrack = document.createElement('td'); tdTrack.textContent = r.tracking_number || '';
+                                    const tdDate = document.createElement('td'); tdDate.textContent = r.date_issued || '';
+                                    const tdExpiry = document.createElement('td'); tdExpiry.textContent = r.date_issued_expiry || '';
+                                    const tdProc = document.createElement('td'); tdProc.textContent = r.processed_by_name || '';
+                                    const tdStatus = document.createElement('td'); tdStatus.textContent = r.status_name || '';
+                                    tr.appendChild(tdTrack);
+                                    tr.appendChild(tdDate);
+                                    tr.appendChild(tdExpiry);
+                                    tr.appendChild(tdProc);
+                                    tr.appendChild(tdStatus);
+                                    tb.appendChild(tr);
+                                });
+                                tbl.appendChild(tb);
+                                container.appendChild(tbl);
+                            } else {
+                                container.textContent = 'No DSWD Senior records found.';
                             }
                         })
                         .catch(() => {

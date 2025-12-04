@@ -12,7 +12,8 @@ class CustomUser(AbstractUser):
         ('5', 'centerstaff'),
         ('6', 'adminpeso'),
         ('7', 'pesostaff'),
-        ('8', 'module1' ),
+        ('8', 'admindswd' ),
+        ('9', 'dswdstaff' ),
     )
     user_type = models.CharField(choices=USER, max_length=25)
     profile_pic = models.ImageField(upload_to='profile_pic/')
@@ -112,6 +113,8 @@ class Registration(models.Model):
     age = models.IntegerField(default=0)
     zone_street = models.CharField(max_length=200, blank=True, null=True)
     end_user_type = models.ForeignKey(End_user_type, on_delete=models.CASCADE, blank=True, null=True)
+    ncsc_rrn = models.CharField(max_length=100, blank=True, null=True)
+    osca_no = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"{self.last_name}, {self.first_name} {self.middle_name or ''}".strip()
@@ -264,3 +267,23 @@ class Peso_tupad(models.Model):
             p_name = f"{self.processed_by.first_name} {self.processed_by.last_name}".strip()
             parts.append(f"processed by {p_name}")
         return ' - '.join(parts)
+    
+
+class Dswd_senior(models.Model):
+    tracking_number = models.CharField(max_length=100, unique=True , blank=True, null=True)
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
+    barangay_indigency = models.BooleanField(default=False)
+    date_issued = models.DateField(auto_now_add=True)
+    date_issued_expiry = models.DateField()
+    processed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, blank=True, null=True)
+    status = models.ForeignKey(Status, on_delete=models.CASCADE, default=1)
+    actioned_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='actioned_dswd_seniors', blank=True, null=True)
+    actioned_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
+    is_completed = models.BooleanField(default=False)
+    released_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='released_dswd_seniors', blank=True, null=True)
+    released_at = models.DateTimeField( auto_now_add=True, blank=True, null=True)
+    is_released = models.BooleanField(default=False)
+    
+    
+    def __str__(self):
+        return f"{self.registration} - Barangay Indigency: {self.barangay_indigency}"

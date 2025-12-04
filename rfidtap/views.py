@@ -57,6 +57,10 @@ def doLogin(request):
                 return redirect('adminpeso_home')
             elif user_type == '7':
                 return redirect('pesostaff_home')
+            elif user_type == '8':
+                return redirect('admindswd_home')
+            elif user_type == '9':
+                return redirect('dswdstaff_home')
             else:
                 messages.error(request, 'Invalid user type.')
                 return redirect('login')
