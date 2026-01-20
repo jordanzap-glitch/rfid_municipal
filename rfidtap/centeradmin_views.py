@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError
+import logging
 from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Status
 from django.utils import timezone
 
@@ -68,27 +69,35 @@ def APPROVAL_TABLE_MEDS(request):
         # record who actioned and when
         user_id = getattr(request.user, 'id', None)
         actioned_at = timezone.now()
+        # Resolve target_status into a real Status record (create if missing)
+        status_name = STATUS_MAP.get(target_status) or 'pending'
+        try:
+            status_obj, _ = Status.objects.get_or_create(status_name=status_name)
+            status_id_to_use = status_obj.id
+        except Exception:
+            logging.exception('Failed to resolve/create Status for %s', status_name)
+            status_id_to_use = None
 
         try:
             if bsrcenter_id:
                 # update only the specific row
                 Bsrcenter.objects.filter(id=bsrcenter_id).update(
-                    status_id=target_status,
+                    status_id=(status_id_to_use if status_id_to_use else target_status),
                     actioned_by_id=user_id,
                     actioned_at=actioned_at,
                 )
             elif registration_id:
-                # fallback: update only one row for that registration (the earliest by id)
-                one = Bsrcenter.objects.filter(registration_id=registration_id).order_by('id').first()
-                if one:
-                    Bsrcenter.objects.filter(id=one.id).update(
-                        status_id=target_status,
+                # update ALL rows for that registration (aligns with docstring)
+                try:
+                    Bsrcenter.objects.filter(registration_id=registration_id).update(
+                        status_id=(status_id_to_use if status_id_to_use else target_status),
                         actioned_by_id=user_id,
                         actioned_at=actioned_at,
                     )
+                except Exception:
+                    logging.exception('Failed to update Bsrcenter rows for registration_id=%s', registration_id)
         except Exception:
-            # tolerate errors and continue
-            pass
+            logging.exception('Unexpected error handling approval POST')
         # Redirect after handling POST to avoid form re-submission on browser refresh (PRG pattern)
         return redirect(request.path)
 
@@ -293,24 +302,33 @@ def APPROVAL_TABLE_BURIALS(request):
         # record who actioned and when
         user_id = getattr(request.user, 'id', None)
         actioned_at = timezone.now()
+        # Resolve target_status into a real Status record (create if missing)
+        status_name = STATUS_MAP.get(target_status) or 'pending'
+        try:
+            status_obj, _ = Status.objects.get_or_create(status_name=status_name)
+            status_id_to_use = status_obj.id
+        except Exception:
+            logging.exception('Failed to resolve/create Status for %s', status_name)
+            status_id_to_use = None
 
         try:
             if bsrcenter_id:
                 Bsrcenter_Burial.objects.filter(id=bsrcenter_id).update(
-                    status_id=target_status,
+                    status_id=(status_id_to_use if status_id_to_use else target_status),
                     actioned_by_id=user_id,
                     actioned_at=actioned_at,
                 )
             elif registration_id:
-                one = Bsrcenter_Burial.objects.filter(registration_id=registration_id).order_by('id').first()
-                if one:
-                    Bsrcenter_Burial.objects.filter(id=one.id).update(
-                        status_id=target_status,
+                try:
+                    Bsrcenter_Burial.objects.filter(registration_id=registration_id).update(
+                        status_id=(status_id_to_use if status_id_to_use else target_status),
                         actioned_by_id=user_id,
                         actioned_at=actioned_at,
                     )
+                except Exception:
+                    logging.exception('Failed to update Bsrcenter_Burial rows for registration_id=%s', registration_id)
         except Exception:
-            pass
+            logging.exception('Unexpected error handling burial approval POST')
         return redirect(request.path)
 
     # Fetch burial rows

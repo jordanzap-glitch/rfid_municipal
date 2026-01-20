@@ -7,7 +7,7 @@ from django.urls import path, include, reverse
 from django.http import JsonResponse
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Peso_reap, Skills_training, Peso_tupad, Academic_year, Reap_type, Civil_status, Occupation
+from app.models import CustomUser, Registration, RfidAuth, Province, Municipality, Barangay, Medicines, Bsrcenter, Bsrcenter_meds, Bsrcenter_Burial, Peso_reap, Skills_training, Peso_tupad, Academic_year, Reap_type, Civil_status, Occupation, Status
 from django.views.decorators.csrf import csrf_exempt
 from datetime import date, datetime as _dt
 from django.utils import timezone
@@ -168,6 +168,16 @@ def REAP_FORM(request):
 
         
 
+        # Ensure a valid Status exists and get its id (avoid FK integrity errors)
+        try:
+            status_default = Status.objects.first()
+            if not status_default:
+                status_default = Status.objects.create(status_name='Pending')
+            status_id_to_use = status_default.id
+        except Exception:
+            logging.exception('Failed to resolve/create default Status')
+            status_id_to_use = None
+
         # Create the Peso_reap record
         reap = None
         MAX_ATTEMPTS = 5
@@ -190,6 +200,7 @@ def REAP_FORM(request):
                             official_receipt=official_receipt,
                             processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
                             Academic_year_id=(active_ay.id if active_ay else (request.POST.get('academic_year_id') or None)),
+                            status_id=status_id_to_use,
                             reap_type_id=(reap_type_id or None),
                             # set completion flag on creation if all docs present
                             **({'is_completed': True} if all_docs_present else {}),
@@ -197,11 +208,18 @@ def REAP_FORM(request):
                     break  # success
                 except IntegrityError:
                     # likely tracking collision — retry
+                    logging.warning('IntegrityError creating REAP (attempt %d)', attempt, exc_info=True)
                     reap = None
                     if attempt == MAX_ATTEMPTS - 1:
                         raise
-        except IntegrityError:
-            messages.error(request, 'Database error while saving REAP.')
+                except Exception:
+                    # unexpected error — log and stop retrying
+                    logging.exception('Unexpected error creating REAP')
+                    reap = None
+                    break
+        except Exception:
+            logging.exception('Failed to save REAP after retries')
+            messages.error(request, 'Unexpected error while saving REAP. Please contact the administrator.')
 
         if reap:
             messages.success(request, 'REAP saved successfully.')
@@ -392,6 +410,16 @@ def TUPAD_FORM(request):
                 skill_name = skill_obj.Skills_name
 
         # Create Peso_tupad record
+        # Ensure a valid Status exists and get its id (avoid FK integrity errors)
+        try:
+            status_default = Status.objects.first()
+            if not status_default:
+                status_default = Status.objects.create(status_name='Pending')
+            status_id_to_use = status_default.id
+        except Exception:
+            logging.exception('Failed to resolve/create default Status')
+            status_id_to_use = None
+
         tupad = None
         MAX_ATTEMPTS = 5
         try:
@@ -409,15 +437,22 @@ def TUPAD_FORM(request):
                             date_issued_expiry=date_issued_expiry_obj if date_issued_expiry_obj else None,
                             name_of_beneficiary=name_of_beneficiary,
                             skills_training_id=skill_id if skill_id else None,
+                            status_id=status_id_to_use,
                             processed_by_id=request.user.id if request.user and request.user.is_authenticated else None,
                         )
                     break
                 except IntegrityError:
+                    logging.warning('IntegrityError creating TUPAD (attempt %d)', attempt, exc_info=True)
                     tupad = None
                     if attempt == MAX_ATTEMPTS - 1:
                         raise
-        except IntegrityError:
-            messages.error(request, 'Database error while saving TUPAD.')
+                except Exception:
+                    logging.exception('Unexpected error creating TUPAD')
+                    tupad = None
+                    break
+        except Exception:
+            logging.exception('Failed to save TUPAD after retries')
+            messages.error(request, 'Unexpected error while saving TUPAD. Please contact the administrator.')
 
         if tupad:
             messages.success(request, 'TUPAD saved successfully.')
