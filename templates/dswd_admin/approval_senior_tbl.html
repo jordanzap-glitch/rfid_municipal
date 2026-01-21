@@ -71,7 +71,16 @@
                                         {% endif %}
                                     </td>
                                     <td data-label="Released">{% if row.is_released %}<span class="text-success">Yes</span>{% else %}<span class="text-danger">No</span>{% endif %}</td>
-                                    <td data-label="Processed By">{{ row.processed_by_name }}</td>
+                                    <td data-label="Processed By">
+                                        {% if row.processed_by_profile_pic_url %}
+                                            <img src="{{ row.processed_by_profile_pic_url }}" alt="avatar" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;margin-right:6px;vertical-align:middle;" />
+                                        {% endif %}
+                                        {% if row.processed_by_name %}
+                                            {{ row.processed_by_name }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
                                     <td data-label="Status">
                                         {% if row.status == 'approved' %}
                                             <div class="badge badge-success">Approved</div>

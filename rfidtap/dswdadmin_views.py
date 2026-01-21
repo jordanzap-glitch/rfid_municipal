@@ -108,6 +108,20 @@ def APPROVAL_TABLE_SENIOR(request):
             sid = None
             st = ''
 
+        # build processed_by display fields safely
+        pb = getattr(r, 'processed_by', None)
+        if pb:
+            pb_first = getattr(pb, 'first_name', '') or ''
+            pb_last = getattr(pb, 'last_name', '') or ''
+            pb_username = getattr(pb, 'username', '') or ''
+            pb_profile_pic = getattr(pb, 'profile_pic', None)
+            pb_profile_pic_url = pb_profile_pic.url if pb_profile_pic and hasattr(pb_profile_pic, 'url') else ''
+            pb_name = (f"{pb_first} {pb_last}".strip()) if (pb_first or pb_last) else (pb_username or '')
+            pb_id = getattr(pb, 'id', None)
+        else:
+            pb_first = pb_last = pb_username = pb_profile_pic_url = pb_name = ''
+            pb_id = None
+
         data.append({
             'id': getattr(r, 'id', None),
             'tracking_number': getattr(r, 'tracking_number', None),
@@ -116,8 +130,12 @@ def APPROVAL_TABLE_SENIOR(request):
             'first_name': getattr(reg, 'first_name', None) if reg else None,
             'date_issued': str(getattr(r, 'date_issued', None)) if getattr(r, 'date_issued', None) else None,
             'date_issued_expiry': str(getattr(r, 'date_issued_expiry', None)) if getattr(r, 'date_issued_expiry', None) else None,
-            'processed_by_id': getattr(r.processed_by, 'id', None) if getattr(r, 'processed_by', None) else None,
-            'processed_by_name': (f"{r.processed_by.first_name} {r.processed_by.last_name}" if getattr(r, 'processed_by', None) else None),
+            'processed_by_id': pb_id,
+            'processed_by_first_name': pb_first,
+            'processed_by_last_name': pb_last,
+            'processed_by_username': pb_username,
+            'processed_by_profile_pic_url': pb_profile_pic_url,
+            'processed_by_name': pb_name,
             'status': st,
             'status_id': sid,
             'is_released': getattr(r, 'is_released', None),

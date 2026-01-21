@@ -229,7 +229,11 @@ def RELEASE_SENIOR(request):
 
     # Authorization: ensure the current user is allowed to release assistance
     try:
-        can_release_flag = bool(getattr(request.user.customuser, 'can_release', False))
+        # In this project `CustomUser` is the user model. Some code assumes a
+        # related `customuser` attribute (when using the default User model),
+        # while other code uses the custom user directly. Handle both cases.
+        user_obj = getattr(request.user, 'customuser', request.user)
+        can_release_flag = bool(getattr(user_obj, 'can_release', False))
     except Exception:
         can_release_flag = False
     if not can_release_flag:

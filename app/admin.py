@@ -5,17 +5,16 @@ from .models import *
 # Register your models here.
 # Always put the models here to edit in the admin dashboard of django
 class UserModel(UserAdmin):
-    list_display = ['id','last_name','first_name', 'username', 'user_type']
+    list_display = ['id','last_name','first_name', 'username', 'user_type', 'can_release']
     search_fields = ['username', 'email', 'first_name', 'last_name']
     list_filter = ['is_active', 'is_staff', 'user_type']
 
     fieldsets = UserAdmin.fieldsets + (
-        (None, {'fields': ('user_type',)}),
-    )
+        (None, {'fields': ('user_type','can_release')}),
+    ) 
     add_fieldsets = UserAdmin.add_fieldsets + (
-        (None, {'fields': ('email', 'user_type')}),
+        (None, {'fields': ('email', 'user_type','can_release')}),
     )
-
 admin.site.register(CustomUser, UserModel)
 admin.site.register(Registration)
 admin.site.register(RfidAuth)
@@ -35,5 +34,6 @@ admin.site.register(Semester)
 admin.site.register(End_user_type)
 admin.site.register(Occupation)
 admin.site.register(Civil_status)
+admin.site.register(Dswd_senior)
 admin.site.site_title = "RFID TAP Admin Portal"
 admin.site.site_header = "RFID TAP Admin"
